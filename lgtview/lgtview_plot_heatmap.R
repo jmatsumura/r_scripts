@@ -1,16 +1,17 @@
 # This script will take in a metadata file formatted for LGTView. It finds
 # whichever column is associated with the header 'bac_blast_lca:list' and
-# builds a heatmap using relative abundances of those OTUs. Users will be 
-# able to specify the level of taxonomy in order to generate a heatmap at
-# a level which suits their particular needs. The second dimension to the 
-# heatmap will also need to be specified and has to be found within that
-# same metadata file. 
+# builds a heatmap using relative or absolute abundances of those OTUs.
+# Users will be able to specify the level of taxonomy in order to generate 
+# a heatmap at a scope which suits their particular needs. The second 
+# dimension to the heatmap will also need to be specified and has to be 
+# found within that same metadata file. 
 #
 # This script is meant to be invoked from LGTView but it can be run on the
 # command line like so:
 #
 # Rscript lgtview_plot_heatmap.R tax_# metadata_header abundance_type
-# tax_# = taxonomic rank used to build the heatmap. Note that there are
+#
+# 1. tax_# = taxonomic rank used to build the heatmap. Note that there are
 # often numerous classically unranked assignments made here. Meaning, it
 # doesn't follow strictly domain;kingdom;phylum;etc. Thus, the user will
 # specify a number here that will, starting from the highest level found,
@@ -18,17 +19,20 @@
 # cellular organisms;Eukaryota;Opisthokonta;Metazoa
 # And the user enters 2 it will return domain-level results. 
 #
-# metadata_header = will map to any of the headers present within the metadata
+# 2. metadata_header = will map to any of the headers present within the metadata
 # file. Thus, leading to the heatmap to be (chosen_metadata,OTUs) as the (x,y)
-# abundance_type = either 'relative' or 'absolute' depending on whether the user
+#
+# 3. abundance_type = either 'relative' or 'absolute' depending on whether the user
 # wants relative counts or absolute counts for how many hits to that particular
-# OTU.
+# OTU within each of the metadata groups.
 #
 # Author: James Matsumura
 #
 # Contact: jmatsumura@som.umaryland.edu
 
 library("plyr")
+library("RColorBrewer")
+library("ggplot2")
 
 # Accept command line arguments
 args <- commandArgs(TRUE)
@@ -39,8 +43,8 @@ taxonomic.rank <- as.numeric(args[2])
 chosen.metadata <- args[3]
 abundance.type <- args[4]
 
-# Start as a dataframe until abundances are calculated. Only filling on the
-# offchance that some odd characters were introduced into an OTU name like
+# Start as a data frame until abundances are calculated. Only filling on the
+# off chance that some odd characters were introduced into an OTU name like
 # '#' which causes issues for R's parsing. 
 data <- read.table(file=file.path, header=T, sep="\t", fill=T)
 
@@ -49,53 +53,101 @@ x.col <- as.data.frame(data[,chosen.metadata])
 
 # Y df is, for now, going to be set as the taxonomic assignment for bac read
 y.col <- as.data.frame(data[,"bac_blast_lca.list"])
-ydf <- data.frame(matrix(nrow=length(y.col[,1]),ncol=1))
-names(ydf)[1]<-"tax"
 
-# First do an absolute count of each OTU present.
+# Build a complete df to subset by that will attach each metadata to the relevant
+# piece of taxonomic information
+final_df <- data.frame(matrix(nrow=length(y.col[,1]),ncol=2))
+final_df[,1] <- as.character(x.col) # metadata col
+#final_df[,2] <- y.col # this will be done later with the user-entered level of tax
+names(final_df)[1] <- "metadata"
+names(final_df)[2] <- "tax"
+
+# First, refine the tax to the prescribed level/rank.
 for(i in 1:length(y.col[,1])){
   
   taxonomy <- strsplit(as.character(y.col[i,1]),";")
   
-  # First account for when the user asks for more specific than was found
+  # Account for when the user asks for more specific than was found
   if(length(taxonomy[[1]]) < taxonomic.rank){
     tax_assignment <- "unclassified"
   } else { # now handle if it is indeed present
     tax_assignment <- taxonomy[[1]][taxonomic.rank]
   }
   
-  # Sharing complete lineage will help more readily ID trends
+  # Sharing complete lineage will help more readily ID trends so attach it all
   if(taxonomic.rank > 1){
     #final_tax_assignment <- paste(taxonomy[[1]][1:taxonomic.rank-1], tax_assignment, collapse=";", sep=";")
     mod_tax_assignment <- paste(taxonomy[[1]][1:taxonomic.rank-1], collapse=";")
     final_tax_assignment <- paste(mod_tax_assignment, tax_assignment, sep=";")
   }
 
-  # Append to DF that will be used to calculate abundance
-  ydf[i,1] <- final_tax_assignment
-  #print(count(ydf, "ncol"))
-  
+  # Append to df that will be used to calculate abundances for each individual df
+  final_df[i,2] <- as.character(final_tax_assignment)
 }
 
-# This will perform the count of each unique type of row to get an abundance
-ydf_counts <- ddply(ydf, .(tax), c("nrow"))
+# This next section will build a matrix for the heatmap with each row representing a
+# unique metadata group and the columns being each unique tax found. 
+#
+# EVENTUALLY UPDATE TO RUN IN PARALLEL:
+# Going to build individual dfs that each represent a single row for each unique type
+# of metadata present. The amount of columns is then dependent on how many unique 
+# instances of tax were just identified by the last step. 
+#
+unique_metadata <- unique(as.character(final_df[,1]))
+unique_tax <- unique(as.character(final_df[,2]))
 
-# Going to build a hash for quick lookup when assigning values to heatmap matrix
-count_hash<-new.env()
+# Build the final data frame with the dimensions just identified. 
+idv_final_df <- data.frame(matrix(nrow=length(unique_metadata),ncol=length(unique_tax)))
 
-# Already in absolute abundance, if relative desired then convert
-if(abundance.type == "relative"){
+# Assign the unique column names and row names at the end
+rownames(idv_final_df) <- as.character(unique_metadata)
+colnames(idv_final_df) <- as.character(unique_tax) 
+
+# Now, for each piece of metadata, need to calculate abundance for each
+for(i in 1:length(unique_metadata)){ # make this run in parallel
+
+  # Subset the data by each unique metadata group
+  md_subset <- final_df[,1]==as.character(unique_metadata[i])
+  idv_df <- final_df[md_subset,1:2]
+  dim(idv_df)
   
-  total <- sum(ydf_counts[,2])
-  for(i in 1:length(ydf_counts[,2])){
-    count_hash[[as.character(ydf_counts[i,1])]]<-(ydf_counts[i,2]/total*100)
+  # This will perform the count of each unique type of tax to get an abundance
+  tax_counts <- ddply(idv_df, .(tax), c("nrow"))
+
+  # Going to build a hash for quick lookup when assigning values to heatmap matrix
+  count_hash<-new.env()
+  
+  # Already in absolute abundance, if relative desired then convert
+  if(abundance.type == "relative"){
+    
+    total <- sum(tax_counts[,2])
+    for(q in 1:length(tax_counts[,2])){
+      count_hash[[as.character(tax_counts[q,1])]]<-(tax_counts[q,2]/total*100)
+    }
+    
+  # Building the hash slightly different for absolute (no % calc necessary)
+  } else {
+    
+    for(p in 1:length(tax_counts[,2])){
+      count_hash[[as.character(tax_counts[p,1])]]<-tax_counts[p,2]
+    }
   }
-
-# Building the hash slightly different for absolute (no % calc necessary)
-} else {
   
-  for(i in 1:length(ydf_counts[,2])){
-    count_hash[[as.character(ydf_counts[i,1])]]<-ydf_counts[i,2]
+  # Iterate over each column, and if a count is present then assign that
+  # value. If it is not, then assign a 0. 
+  for(j in 1:length(unique_tax)){
+    
+    # Check the built hash. If the current metadata group doesn't match to 
+    # any of the tax groups identified, set the count to 0.
+    if(is.null(count_hash[[colnames(idv_final_df)[j]]])){
+      idv_final_df[i,j] <- 0
+
+    # If this tax was associated with this metadata group, set to the 
+    # count that was found for this particular group.
+    } else {
+      idv_final_df[i,j] <- as.numeric(count_hash[[colnames(idv_final_df)[j]]])
+    }
   }
 }
 
+# Now that the matrix has been built, time to plot the heatmap. 
