@@ -48,22 +48,41 @@ abundance.type <- args[4]
 # '#' which causes issues for R's parsing. 
 data <- read.table(file=file.path, header=T, sep="\t", fill=T)
 
+# BEGIN SECTION TO BE ADDED ONCE IMPLEMENTED WITH SITE
+#
+# In order to be more accommodating with LGTView, this should take some input that
+# allows for subsetting the particular data file with the current set of data 
+# displayed in LGTView. For now, generate a file that contains a list of a 
+# unique attribute (read pair ID)
+#
+# subset.input <- args[5]
+# if (subset.input != "noFilter") {
+#   chosen.subset <- read.table(file=subset.input, header=T, fill=T)
+#   filter.dat <- data[chosen.subset,"read"] # use reads to decide which rows to keep
+#   data <- data[filter.dat,] # isolate this subset
+# }
+#
+# END SECTION TO BE ADDED ONCE IMPLEMENTED WITH SITE
+
 # X df is whichever metadata is specified
 x.col <- as.data.frame(data[,chosen.metadata])
 
 # Y df is, for now, going to be set as the taxonomic assignment for bac read
 y.col <- as.data.frame(data[,"bac_blast_lca.list"])
 
+# Need essentially the number of unique entries in the metadata file
+f.len <- length(y.col[[1]]) # x.col list is the same length
+
 # Build a complete df to subset by that will attach each metadata to the relevant
 # piece of taxonomic information
 final_df <- data.frame(matrix(nrow=length(y.col[,1]),ncol=2))
-final_df[,1] <- as.character(x.col) # metadata col
+final_df[,1] <- x.col # metadata col
 #final_df[,2] <- y.col # this will be done later with the user-entered level of tax
 names(final_df)[1] <- "metadata"
 names(final_df)[2] <- "tax"
 
 # First, refine the tax to the prescribed level/rank.
-for(i in 1:length(y.col[,1])){
+for(i in 1:f.len){
   
   taxonomy <- strsplit(as.character(y.col[i,1]),";")
   
@@ -88,29 +107,30 @@ for(i in 1:length(y.col[,1])){
 # This next section will build a matrix for the heatmap with each row representing a
 # unique metadata group and the columns being each unique tax found. 
 #
-# EVENTUALLY UPDATE TO RUN IN PARALLEL:
+# EVENTUALLY UPDATE TO RUN IN PARALLEL IF PROVES TOO SLOW:
 # Going to build individual dfs that each represent a single row for each unique type
 # of metadata present. The amount of columns is then dependent on how many unique 
 # instances of tax were just identified by the last step. 
 #
+
 unique_metadata <- unique(as.character(final_df[,1]))
 unique_tax <- unique(as.character(final_df[,2]))
 
 # Build the final data frame with the dimensions just identified. 
 idv_final_df <- data.frame(matrix(nrow=length(unique_metadata),ncol=length(unique_tax)))
 
-# Assign the unique column names and row names at the end
+# Assign the unique column names and row names to what will be the matrix to 
+# store the abundance counts per unique metadata+tax combo
 rownames(idv_final_df) <- as.character(unique_metadata)
 colnames(idv_final_df) <- as.character(unique_tax) 
 
 # Now, for each piece of metadata, need to calculate abundance for each
 for(i in 1:length(unique_metadata)){ # make this run in parallel
-
+  
   # Subset the data by each unique metadata group
   md_subset <- final_df[,1]==as.character(unique_metadata[i])
   idv_df <- final_df[md_subset,1:2]
-  dim(idv_df)
-  
+
   # This will perform the count of each unique type of tax to get an abundance
   tax_counts <- ddply(idv_df, .(tax), c("nrow"))
 
@@ -151,3 +171,5 @@ for(i in 1:length(unique_metadata)){ # make this run in parallel
 }
 
 # Now that the matrix has been built, time to plot the heatmap. 
+pdf("test.pdf", width=9, height=9)
+heatmap(as.matrix(idv_final_df))
