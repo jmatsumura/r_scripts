@@ -32,8 +32,6 @@
 
 library("plyr")
 library("RColorBrewer")
-library("reshape2")
-library("ggplot2")
 
 # Accept command line arguments
 args <- commandArgs(TRUE)
@@ -199,13 +197,23 @@ if(dim(idv_final_df)[1] < 2){
 # If data can generate a heatmap (greater than 2,2 dimensions), generate it  
 } else {
   
-  png(outfile, width=960, height=1260)
+  png(outfile, width=1440, height=980)
   
   # Sort by row names to make the graph a bit more legible. Note that, based on 
   # similarity of abundance distribution (which needs to be interpeted carefully)
   # this ordering may be broken down into the different clustered groups.
-  sorted_final_df <- idv_final_df[order(rownames(idv_final_df)), ]
-  print(dim(sorted_final_df))
-  gg <- ggplot(sorted_final_df)
-  gg
+  sorted_final_df <- idv_final_df[order(rownames(idv_final_df)),]
+  
+  # Doing 100 for color gradient to accommodate relative abundance
+  cg <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+  
+  # Transform achieves flipping axes
+  # Disabling clustering methods because I do not think it is appropriate to convey
+  # relationships regardless of metadata type. Can make this an option in future version.
+  heatmap(as.matrix(t(sorted_final_df)), Rowv=NA, Colv=NA, col=cg, scale="column", margins=c(6,12))
+  
+  # Now build legend to go along side this heatmap
+  leg <- seq(0, 100, length=20)
+  image(as.matrix(leg), col=cg, axes=F)
+  axis(1, at=seq(0,1,length=length(leg)), cex.axis=1)
 }
