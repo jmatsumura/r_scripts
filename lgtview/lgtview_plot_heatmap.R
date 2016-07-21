@@ -32,6 +32,7 @@
 
 library("plyr")
 library("RColorBrewer")
+library("reshape2")
 library("ggplot2")
 
 # Accept command line arguments
@@ -53,7 +54,8 @@ data <- read.table(file=file.path, header=T, sep="\t", fill=T)
 # In order to be more accommodating with LGTView, this should take some input that
 # allows for subsetting the particular data file with the current set of data 
 # displayed in LGTView. For now, generate a file that contains a list of a 
-# unique attribute (read pair ID)
+# unique attribute (read pair ID). This makes the script much more flexible as it
+# now benefits from the various filter mechanisms available in LGTView. 
 #
 # subset.input <- args[5]
 # if (subset.input != "noFilter") {
@@ -95,9 +97,12 @@ for(i in 1:f.len){
   
   # Sharing complete lineage will help more readily ID trends so attach it all
   if(taxonomic.rank > 1){
-    #final_tax_assignment <- paste(taxonomy[[1]][1:taxonomic.rank-1], tax_assignment, collapse=";", sep=";")
     mod_tax_assignment <- paste(taxonomy[[1]][1:taxonomic.rank-1], collapse=";")
     final_tax_assignment <- paste(mod_tax_assignment, tax_assignment, sep=";")
+    
+  # Handle the case where they only want the first taxonomic rank  
+  } else {
+    final_tax_assignment <- taxonomy[[1]][1]
   }
 
   # Append to df that will be used to calculate abundances for each individual df
@@ -170,6 +175,37 @@ for(i in 1:length(unique_metadata)){ # make this run in parallel
   }
 }
 
-# Now that the matrix has been built, time to plot the heatmap. 
-pdf("test.pdf", width=9, height=9)
-heatmap(as.matrix(idv_final_df))
+# Now that the data has been populated. 
+outfile <- "lgtview_heatmap.png"
+
+# Makes sense to print this to an image to reduce the amount of handling required
+# by the LGTView JS
+printError <- function(x){
+  error <- paste("Cannot generate heatmap as there are less than two distinct types of ",x,".",sep="")
+  png(outfile, width=960, height=480)
+  plot.new()
+  title(error, line=-10, cex.main=1.8)
+}
+
+# Need to do error handling here in case either X or Y dims are less than 2
+# since that cannot generate a valid heatmap. 
+if(dim(idv_final_df)[1] < 2){
+  printError("metadata groups")
+
+# Handle Y dimension. This gives more details on why it failed to the user    
+} else if (dim(idv_final_df)[2] < 2) {
+  printError("taxonomy lineages")
+  
+# If data can generate a heatmap (greater than 2,2 dimensions), generate it  
+} else {
+  
+  png(outfile, width=960, height=1260)
+  
+  # Sort by row names to make the graph a bit more legible. Note that, based on 
+  # similarity of abundance distribution (which needs to be interpeted carefully)
+  # this ordering may be broken down into the different clustered groups.
+  sorted_final_df <- idv_final_df[order(rownames(idv_final_df)), ]
+  print(dim(sorted_final_df))
+  gg <- ggplot(sorted_final_df)
+  gg
+}
