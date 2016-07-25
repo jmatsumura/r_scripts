@@ -233,7 +233,8 @@ Ext.onReady(function(){
             {layout: 'fit',
             region: 'west',
             title: 'Filters',
-            buttons: [{text: 'reload',handler: function() { loadData()}}],
+            buttons: [{text: 'reload',handler: function() { loadData()}},
+					 {text: 'tab-delimited', handler: function() { getText('dl')}}],
             split: true,
             items: [{layout: 'anchor',
                      items: [
@@ -282,14 +283,32 @@ Ext.onReady(function(){
         return allfilters;
     }
 	
-	function getText() {
+	function getText(out_type) {
         var filters = getFilters();
+		var params;
 
         // Download text here
-        var params = {
-            cond: Ext.encode(filters),
-            format: 'text'
-        }
+		if(out_type == 'dl') {
+       		params = {
+        	    cond: Ext.encode(filters),
+				file_format: out_type,
+        	    format: 'text'
+        	}
+		}
+
+		else if(out_type == 'local') {
+			var vals = hm_form.getValues();
+       		params = {
+        	    cond: Ext.encode(filters),
+				file_format: out_type,
+        	    format: 'text',
+				infile: vals.inp_infile,
+				tax_rank: vals.inp_tax_rank,
+				chosen_metadata: vals.inp_chosen_metadata,
+				abundance_type: vals.inp_abundance_type
+        	}
+		}
+
         Ext.apply(params,conf);
         var request = Ext.urlEncode(params);
         if (!Ext.fly('frmDummy')) {
@@ -313,7 +332,9 @@ Ext.onReady(function(){
         });
     }
 
-    function loadData(caller,cond) {
+	// Need to add a 'plot_type' option here to differentiate between
+	// the various panels. 
+    function loadData(caller,cond,plot_type) {
         appendFilter(cond);
         allfilters = {};
         filterstore.each(function(rec) {
@@ -340,22 +361,28 @@ Ext.onReady(function(){
         }
 // END FILTER SECTION 2
 
-        // Reload the Krona Plot here
-        var kronaparams = {
-            cond: Ext.encode(allfilters),
-            format: 'krona',
-            condfield: 'bac_blast_lca'
+		if(typeof plot_type === undefined){
+        	// Reload the Krona Plot here
+        	var kronaparams = {
+        	    cond: Ext.encode(allfilters),
+        	    format: 'krona',
+        	    condfield: 'bac_blast_lca'
+        	}
+        	Ext.apply(kronaparams,conf);
+        	Ext.Ajax.request({
+        	    url: '/cgi-bin/view.cgi',
+        	    params: kronaparams,
+        	    success: function(response){
+        	        var res = Ext.decode(response.responseText);
+        	        Ext.getDom('bac-iframe').src = res.file;
+        	    }
+        	});
         }
-        Ext.apply(kronaparams,conf);
-        Ext.Ajax.request({
-            url: '/cgi-bin/view.cgi',
-            params: kronaparams,
-            success: function(response){
-                var res = Ext.decode(response.responseText);
-                Ext.getDom('bac-iframe').src = res.file;
-            }
-        });
-         
+
+		else if(plot_type == 'heatmap'){
+			getText('local');
+		}
+
         Ext.each(allStores, function(store) {
         
                 Ext.apply(store.getProxy().extraParams,

@@ -77,17 +77,17 @@ if($format eq 'text') {
     my $keys = [];
 
 	# Need to do a little extra checking here whether this file is being generated
-	# for the user or for use in creating a file as input for heatmap generation. 
-	my $outfile = '';
+	# for the user as a download ('dl') or it is to be used in the generation of a
+	# heatmap and is input for an R script ('local'). 
+	my $outfile = "lgtview_$db\_$md5.txt";
 	my $out;
 
 	if($file_format eq 'dl') {
-    	print "Content-Disposition: attachment; filename=lgtview_$db\_$md5.txt\n\n";
+    	print "Content-Disposition: attachment; filename=$outfile\n\n";
 	}
 
 	elsif($file_format eq 'local') {
-		$outfile = "lgtview_$db\_$md5.txt";
-		open($out, ">$outfile" || die "Can't open file $outfile");
+		open($out, ">$TMP_DIR/$outfile" || die "Can't open file $TMP_DIR/$outfile");
 	}
 
     my $headers = [];
@@ -131,12 +131,21 @@ if($format eq 'text') {
         	print $out "\n";
 		}
     }
+
+	# Now that the file is present, use it to run the heatmap R script
+	if($file_format eq 'local') {
+
+		# These are all the params, in order, required for the R script
+		my $infile = $cgi->param('infile');
+		my $tax_rank = $cgi->param('tax_rank');
+		my $chosen_metadata = $cgi->param('chosen_metadata');
+		my $abudance_type = $cgi->param('abundance_type');
+		my $filter = "$TMP_DIR/$outfile";
+	}
 }
 
 else {
-#my $result = $mongo_db->run_command($cmd);
     
-#my $rescoll = $result;
     print "Content-type: text/plain\n\n";
     print $json->encode($result);
 }

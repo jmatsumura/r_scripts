@@ -35,6 +35,7 @@
 
 library("plyr")
 library("RColorBrewer")
+library("data.table")
 
 # Accept command line arguments
 args <- commandArgs(TRUE)
@@ -60,7 +61,8 @@ data <- read.table(file=file.path, header=T, sep="\t", fill=T)
 
 if (subset.input != "noFilter") {
   
-  chosen.subset <- read.table(file=subset.input, header=T, sep="\t", fill=T)
+  # fread can be played with depending on if speed is that much of an issue
+  chosen.subset <- fread(subset.input, select = c("read"))
   
   # Odd, can't consistently filter without doing this in some iterative fashion.
   # Use read IDs to isolate which rows to keep
