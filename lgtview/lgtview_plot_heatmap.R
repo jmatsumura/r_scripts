@@ -60,7 +60,7 @@ data <- read.table(file=file.path, header=T, sep="\t", fill=T)
 
 if (subset.input != "noFilter") {
   
-  chosen.subset <- read.table(file=subset.input, header=T)
+  chosen.subset <- read.table(file=subset.input, header=T, sep="\t", fill=T)
   
   # Odd, can't consistently filter without doing this in some iterative fashion.
   # Use read IDs to isolate which rows to keep
