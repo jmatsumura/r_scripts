@@ -5,7 +5,7 @@ Ext.onReady(function(){
      var conf = {
         db: 'lgtview_example',
         host: '172.18.0.1:27017',
-		site: 'https://localhost:443/twinblast.html'
+		site: 'http://localhost:443/twinblast.html'
 		site: 'http://localhost:8080/twinblast.html'
     };
     var allStores = [];
@@ -57,6 +57,8 @@ Ext.onReady(function(){
     var filtergrid = new Ext.grid.Panel({
         store: filterstore,
         forcefit: true,
+//        width: '100%',
+//        height: '100%',
         anchor: '100%, 100%',
         flex: 1,
         selModel: {
@@ -208,11 +210,12 @@ Ext.onReady(function(){
         items: [
         {width: 260,
         xtype: 'container',
+//      padding: '0',
         html: '<img height=50px src=lgtview_logo_50px_trans.png>'},
         {width: 800,
         xtype: 'container',
             padding: '10 0 0 10',
-		html: '<i>The reads below are putative Lateral Gene Transfer reads. They are paired-end reads where one mate maps to a donor genome and the other mate maps to a host genome. Clicking on the pie charts will filter the reads in the display. Selecting/deselecting elements from the \'filters\' section will also change the reads in the display. Clicking on a read name in the \'read\' column will open a page with BLAST results for that read.</i>'},
+		html: '<i>The reads below are putative Lateral Gene Transfer reads. They are paired-end reads where one mate maps to a donor genome and the other mate maps to a host genome. Clicking on the pie charts will filter the reads in the display. Selecting/deselecting elements from the \'filters\' section will also change the reads in the display. Clicking on a read name in the \'read\' column will open a page with blast results for that read.</i>'},
         {flex: 1,xtype: 'container'}
         ]
 	});
@@ -234,7 +237,7 @@ Ext.onReady(function(){
             region: 'west',
             title: 'Filters',
             buttons: [{text: 'reload',handler: function() { loadData()}},
-					 {text: 'tab-delimited', handler: function() { getText('dl')}}],
+                     {text: 'tab-delimited',handler: function() { getText('dl')}}],
             split: true,
             items: [{layout: 'anchor',
                      items: [
@@ -250,13 +253,12 @@ Ext.onReady(function(){
     var allfilters = {};
     loadData();
 
-	function getFilters() {
+    function getFilters() {
+
         allfilters = {};
+
         filterstore.each(function(rec) {
             var val = rec.data.value;
-            if(rec.data.type =='numeric') {
-                val = rec.data.value*1;
-            }
             if(rec.data.op == '=') {
                 allfilters[rec.data.key] = val;
             }
@@ -272,42 +274,43 @@ Ext.onReady(function(){
         if(min_bac_len.getValue() != '') {
             allfilters['bac_len'] = {'$gt': min_bac_len.getValue()*1};
         }
-        if(chosen_euk_genus.getValue() != '') {
+        if(min_euk_len.getValue() != '') {
             allfilters['euk_genus'] = {'$regex': chosen_euk_genus.getValue()};
         }
-        if(chosen_bac_genus.getValue() != '') {
+        if(min_euk_len.getValue() != '') {
             allfilters['bac_genus'] = {'$regex': chosen_bac_genus.getValue()};
         }
 // END FILTER SECTION 2
 
+
         return allfilters;
     }
-	
-	function getText(out_type) {
+
+    function getText(out_type) {
+
         var filters = getFilters();
-		var params;
+        var params;
 
-        // Download text here
-		if(out_type == 'dl') {
-       		params = {
-        	    cond: Ext.encode(filters),
-				file_format: out_type,
-        	    format: 'text'
-        	}
-		}
+        if(out_type == 'dl') {
+            params = {
+                cond: Ext.encode(filters),
+                file_format: out_type,
+                format: 'text'
+            }
+        }
 
-		else if(out_type == 'local') {
-			var vals = hm_form.getValues();
-       		params = {
-        	    cond: Ext.encode(filters),
-				file_format: out_type,
-        	    format: 'text',
-				infile: vals.inp_infile,
-				tax_rank: vals.inp_tax_rank,
-				chosen_metadata: vals.inp_chosen_metadata,
-				abundance_type: vals.inp_abundance_type
-        	}
-		}
+        else if(out_type == 'local') {
+            var vals = hm_form.getValues();
+            params = {
+                cond: Ext.encode(filters),
+                file_format: out_type,
+                format: 'text',
+                infile: vals.inp_infile,
+                tax_rank: vals.inp_tax_rank,
+                chosen_metadata: vals.inp_chosen_metadata,
+                abudance_type: vals.inp_abundance_type
+            }
+        }
 
         Ext.apply(params,conf);
         var request = Ext.urlEncode(params);
@@ -318,6 +321,7 @@ Ext.onReady(function(){
             frm.className = 'x-hidden';
             document.body.appendChild(frm);
         }
+
         Ext.Ajax.request({
             method: 'POST',
             timeout: 5000000,
@@ -332,9 +336,7 @@ Ext.onReady(function(){
         });
     }
 
-	// Need to add a 'plot_type' option here to differentiate between
-	// the various panels. 
-    function loadData(caller,cond,plot_type) {
+    function loadData(caller,cond) {
         appendFilter(cond);
         allfilters = {};
         filterstore.each(function(rec) {
@@ -361,28 +363,22 @@ Ext.onReady(function(){
         }
 // END FILTER SECTION 2
 
-		if(typeof plot_type === undefined){
-        	// Reload the Krona Plot here
-        	var kronaparams = {
-        	    cond: Ext.encode(allfilters),
-        	    format: 'krona',
-        	    condfield: 'bac_blast_lca'
-        	}
-        	Ext.apply(kronaparams,conf);
-        	Ext.Ajax.request({
-        	    url: '/cgi-bin/view.cgi',
-        	    params: kronaparams,
-        	    success: function(response){
-        	        var res = Ext.decode(response.responseText);
-        	        Ext.getDom('bac-iframe').src = res.file;
-        	    }
-        	});
+        // Reload the Krona Plot here
+        var kronaparams = {
+            cond: Ext.encode(allfilters),
+            format: 'krona',
+            condfield: 'bac_blast_lca'
         }
-
-		else if(plot_type == 'heatmap'){
-			getText('local');
-		}
-
+        Ext.apply(kronaparams,conf);
+        Ext.Ajax.request({
+            url: '/cgi-bin/view.cgi',
+            params: kronaparams,
+            success: function(response){
+                var res = Ext.decode(response.responseText);
+                Ext.getDom('bac-iframe').src = res.file;
+            }
+        });
+         
         Ext.each(allStores, function(store) {
         
                 Ext.apply(store.getProxy().extraParams,
@@ -391,6 +387,8 @@ Ext.onReady(function(){
                 store.load();
         });
     }
+    
+
     
     function appendFilter(filter) { 
         for(i in filter) if (filter.hasOwnProperty(i)) {
@@ -408,7 +406,6 @@ Ext.onReady(function(){
             }
         }
     }
-
     function addWindow(params) {
 
         Ext.regModel(params.modname,{
@@ -489,4 +486,5 @@ Ext.onReady(function(){
         
         offset = offset + 50;
     }
+
 });
