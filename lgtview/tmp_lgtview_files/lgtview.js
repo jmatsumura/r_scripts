@@ -5,7 +5,6 @@ Ext.onReady(function(){
      var conf = {
         db: 'lgtview_example',
         host: '172.18.0.1:27017',
-		site: 'http://localhost:443/twinblast.html'
 		site: 'http://localhost:8080/twinblast.html'
     };
     var allStores = [];
@@ -41,6 +40,7 @@ Ext.onReady(function(){
             {name: 'op', type: 'string'}
         ]
     });
+
     var filterstore = new Ext.data.Store({
         model: 'filters',
         proxy: {
@@ -51,14 +51,14 @@ Ext.onReady(function(){
             }
         }
     });    
+
     var cellEditing = Ext.create('Ext.grid.plugin.CellEditing', {
         clicksToEdit: 1
     });
+
     var filtergrid = new Ext.grid.Panel({
         store: filterstore,
         forcefit: true,
-//        width: '100%',
-//        height: '100%',
         anchor: '100%, 100%',
         flex: 1,
         selModel: {
@@ -120,6 +120,7 @@ Ext.onReady(function(){
     });
     var filterform = new Ext.form.Panel({
         width: '100%',
+        height: '100%',
         frame: true,
         items: [min_euk_len,min_bac_len,chosen_euk_genus,chosen_bac_genus]
     });
@@ -172,7 +173,7 @@ Ext.onReady(function(){
         title: 'Reads',
         region: 'south',
         forcefit: true,
-        height: 300,
+        height: 250,
         split: true,
         columns: [],
         // paging bar on the bottom
@@ -183,13 +184,46 @@ Ext.onReady(function(){
             emptyMsg: "No reads to display"
         }),
     });
+
+    var plot_radiogroup = Ext.create('Ext.form.RadioGroup', {
+        xtype: 'radio',
+        title: 'plot type',
+        columns: 3,
+	flex: 1,
+        collapsible: true,
+        items: [
+            {
+            boxLabel: 'Krona',
+            inputValue: 'krona_plot',
+            name: 'plot_type',
+            id: 'k_plot_radio'
+            },{
+            boxLabel: 'heatmap',
+            inputValue: 'heatmap_plot',
+            name: 'plot_type',
+            id: 'hm_plot_radio'
+            },{
+            xtype: 'button',
+            text: 'generate plot'
+            }
+        ]
+    });
+
     var bacwin = new Ext.Panel({
         title: 'Bacterial Mappings',
         layout: 'fit',
         split: true,
         region: 'east',
-        width: 500,
+        flex: 1,
         autoScroll: true,
+        dockedItems: [{
+            xtype: 'toolbar',
+            dock: 'top',
+            items: [{
+                xtype: 'label',
+                html: "Plot Configuration"
+            }]
+        }],
         loader: {
             loadMask: false
         },
@@ -202,23 +236,22 @@ Ext.onReady(function(){
         }]
     });
 
-	var titlebar = new Ext.Panel({
-		height: 54,
+    var titlebar = new Ext.Panel({
+	height: 54,
         region: 'north',
         forcefit: true,
         layout: 'hbox',
         items: [
         {width: 260,
         xtype: 'container',
-//      padding: '0',
         html: '<img height=50px src=lgtview_logo_50px_trans.png>'},
         {width: 800,
         xtype: 'container',
-            padding: '10 0 0 10',
-		html: '<i>The reads below are putative Lateral Gene Transfer reads. They are paired-end reads where one mate maps to a donor genome and the other mate maps to a host genome. Clicking on the pie charts will filter the reads in the display. Selecting/deselecting elements from the \'filters\' section will also change the reads in the display. Clicking on a read name in the \'read\' column will open a page with blast results for that read.</i>'},
+        padding: '10 0 5 10',
+	html: '<i>The reads below are putative Lateral Gene Transfer reads. They are paired-end reads where one mate maps to a donor genome and the other mate maps to a host genome. Clicking on the pie charts will filter the reads in the display. Selecting/deselecting elements from the \'filters\' section will also change the reads in the display. Clicking on a read name in the \'read\' column will open a page with BLAST results for that read.</i>'},
         {flex: 1,xtype: 'container'}
         ]
-	});
+    });
 
     var vp = new Ext.Viewport({
         items: [titlebar,
@@ -226,6 +259,14 @@ Ext.onReady(function(){
              id: 'portalpanel',
              region: 'center',
              title: 'Graphs',
+             dockedItems: [{
+                 xtype: 'toolbar',
+                 dock: 'top',
+                 items: [{
+                     xtype: 'label',
+                     html: "Graph Filter"
+                 }]
+             }],
              items: [{
                  items: portlets[0]
              },{
@@ -388,8 +429,6 @@ Ext.onReady(function(){
         });
     }
     
-
-    
     function appendFilter(filter) { 
         for(i in filter) if (filter.hasOwnProperty(i)) {
             if(filterstore.findRecord('key',i)) {
@@ -406,6 +445,7 @@ Ext.onReady(function(){
             }
         }
     }
+
     function addWindow(params) {
 
         Ext.regModel(params.modname,{
@@ -414,6 +454,7 @@ Ext.onReady(function(){
             {name: 'count', type: 'int'}
         ]
         });
+
         var newstore = new Ext.data.Store({
             model: params.modname,
             autoLoad: false,
@@ -431,6 +472,7 @@ Ext.onReady(function(){
                 }
             }
         });
+
         var newchart = new Ext.chart.Chart({
             animate: true,
             store: newstore,
@@ -472,6 +514,7 @@ Ext.onReady(function(){
                 }
             }]
         });
+
         allStores.push(newstore);
         if(portlets[0].length <= portlets[1].length) {
             portlets[0].push({title: '' + params.name,
@@ -486,5 +529,4 @@ Ext.onReady(function(){
         
         offset = offset + 50;
     }
-
 });
