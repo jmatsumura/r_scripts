@@ -9,9 +9,11 @@
 # This script is meant to be invoked from LGTView but it can be run on the
 # command line like so:
 #
-# Rscript lgtview_plot_heatmap.R tax_# metadata_header abundance_type noFilter
+# Rscript lgtview_plot_heatmap.R infile tax_# metadata_header abundance_type limit
 #
-# 1. tax_# = taxonomic rank used to build the heatmap. Note that there are
+# 1. infile = tab-delimited total metadata file (this may be filtered already by LGTView)
+#
+# 2. tax_# = taxonomic rank used to build the heatmap. Note that there are
 # often numerous classically unranked assignments made here. Meaning, it
 # doesn't follow strictly domain;kingdom;phylum;etc. Thus, the user will
 # specify a number here that will, starting from the highest level found,
@@ -19,15 +21,15 @@
 # cellular organisms;Eukaryota;Opisthokonta;Metazoa
 # And the user enters 2 it will return domain-level results. 
 #
-# 2. metadata_header = will map to any of the headers present within the metadata
+# 3. metadata_header = will map to any of the headers present within the metadata
 # file. Thus, leading to the heatmap to be (chosen_metadata,OTUs) as the (x,y)
 #
-# 3. abundance_type = either 'relative' or 'absolute' depending on whether the user
+# 4. abundance_type = either 'relative' or 'absolute' depending on whether the user
 # wants relative counts or absolute counts for how many hits to that particular
 # OTU within each of the metadata groups.
 #
-# 4. noFilter = either the path to a file that contains solely a list of read pair
-# IDs or the text 'noFilter' which means all of the metadata file will be used. 
+# 5. limit = the number of metadata fields that should be restricted to so that the
+# output is not overcrowded. 
 #
 # Author: James Matsumura
 #
@@ -45,7 +47,7 @@ file.path <- args[1]
 taxonomic.rank <- as.numeric(args[2])
 chosen.metadata <- args[3]
 abundance.type <- args[4]
-subset.input <- args[5]
+limit.output <- as.numeric(args[5])
 
 # Start as a data frame until abundances are calculated. Only filling on the
 # off chance that some odd characters were introduced into an OTU name like
@@ -53,26 +55,28 @@ subset.input <- args[5]
 
 data <- read.table(file=file.path, header=T, sep="\t", fill=T)
 
+# UPDATE - JUL 27
+# There's no reason I need a filter file, should just use whatever file is generated
+# by LGTView at the time of invoking the heatmap generation. This will auto-generate 
+# a filtered or non-filtered dataset. Can delete if this proves to be unnecessary.
+# 
 # In order to be more accommodating with LGTView, this should take some input that
 # allows for subsetting the particular data file with the current set of data 
 # displayed in LGTView. For now, generate a file that contains a list of a 
 # unique attribute (read pair ID). This makes the script much more flexible as it
 # now benefits from the various filter mechanisms available in LGTView. 
-
-if (subset.input != "noFilter") {
-  
+#if (subset.input != "noFilter") {
   # fread can be played with depending on if speed is that much of an issue
-  chosen.subset <- fread(subset.input, select = c("read"))
-  
+#  chosen.subset <- fread(subset.input, select = c("read"))
   # Odd, can't consistently filter without doing this in some iterative fashion.
   # Use read IDs to isolate which rows to keep
-  filtered.indices <- c()
-  
-  for(i in 1:length(chosen.subset[[1]])){
-    filtered.indices[i] <- match(chosen.subset[[1]][i], data[,"read"])
-  }
-  data <- data[filtered.indices,]
-}
+#  filtered.indices <- c()
+#  for(i in 1:length(chosen.subset[[1]])){
+#    filtered.indices[i] <- match(chosen.subset[[1]][i], data[,"read"])
+#  }
+#  data <- data[filtered.indices,]
+#}
+# END UPDATE - JULY 27
 
 # X df is whichever metadata is specified
 x.col <- as.data.frame(data[,chosen.metadata])
@@ -136,6 +140,8 @@ rownames(idv_final_df) <- as.character(unique_metadata)
 colnames(idv_final_df) <- as.character(unique_tax) 
 
 max <- 0 # needed to build legend for absolute abundance
+# Building a vector for refining to top x hits with the most evidence
+total.hits <- data.frame(matrix(nrow=length(unique_metadata),ncol=1))
 
 # Now, for each piece of metadata, need to calculate abundance for each
 for(i in 1:length(unique_metadata)){ 
@@ -155,6 +161,8 @@ for(i in 1:length(unique_metadata)){
   if(abundance.type == "relative"){
     
     total <- sum(tax_counts[,2])
+    total.hits[i,1] <- total
+    
     for(q in 1:length(tax_counts[,2])){
       count_hash[[as.character(tax_counts[q,1])]]<-(tax_counts[q,2]/total*100)
     }
@@ -163,6 +171,9 @@ for(i in 1:length(unique_metadata)){
   } else {
     
     for(p in 1:length(tax_counts[,2])){
+      
+      total.hits[i,1] <- sum(tax_counts[,2])
+      
       count_hash[[as.character(tax_counts[p,1])]]<-tax_counts[p,2]
       
       if(tax_counts[p,2] > max){
@@ -189,6 +200,17 @@ for(i in 1:length(unique_metadata)){
   }
 }
 
+# At this point, each metadata field has tax assigned as well as the respective 
+# counts. Need to subset by the vector of sums to find the top X total counts. 
+sort.index <- sort(as.numeric(total.hits[,1]), index.return=TRUE, decreasing=TRUE)[[2]]
+
+# Only limit this if it even needs to be limited
+if(limit.output < length(sort.index)){
+  new.sort.index <- sort.index[1:limit.output] # use these indices to subset
+}
+
+idv_final_df <- idv_final_df[sort.index[1:limit.output],] # data subsetted by metadata groups
+
 # Build the legend here so it isn't recalculated at each iteration of the previous loop
 if(abundance.type == "relative"){
   leg <- seq(0, 100, length=21)
@@ -200,7 +222,7 @@ if(abundance.type == "relative"){
   leg_labels <- round(seq(0, max, length.out=21))
 }
 
-# Now that the data has been populated. 
+# Now that the data has been populated, output the plot
 outfile <- "lgtview_heatmap.png"
 
 # Makes sense to print this to an image to reduce the amount of handling required
