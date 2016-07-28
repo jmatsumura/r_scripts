@@ -253,20 +253,48 @@ Ext.onReady(function(){
         ]
     });
 
+    // Going to dynamically generate 
+    var graphMenu = Ext.create('Ext.menu.Menu'); 
+
+    for (var i = 0; i < portlets[0].length; ++i) {
+        var port_action = Ext.create('Ext.Action', {
+            text: portlets[0][i].title
+        });
+        graphMenu.add(port_action);
+    }
+
+    for (var i = 0; i < portlets[1].length; ++i) {
+        var port_action = Ext.create('Ext.Action', {
+            text: portlets[1][i].title
+        });
+        graphMenu.add(port_action);
+    }
+
+    var graphs_reload = Ext.create('Ext.Action', {
+        text: 'Reload Graphs'
+    });
+
     var vp = new Ext.Viewport({
         items: [titlebar,
             {xtype: 'portalpanel',
              id: 'portalpanel',
              region: 'center',
              title: 'Graphs',
-             dockedItems: [{
+             dockedItems: {
+                 itemId: 'graphs_toolbar',
                  xtype: 'toolbar',
                  dock: 'top',
-                 items: [{
-                     xtype: 'label',
-                     html: "Graph Filter"
-                 }]
-             }],
+                 items: [
+                     {
+                         text: 'Select Graphs to Remove',
+                         menu: graphMenu
+                     },{
+                         xtype:'tbspacer',
+                         flex:1
+                     },
+                     graphs_reload
+                 ]
+             },
              items: [{
                  items: portlets[0]
              },{
