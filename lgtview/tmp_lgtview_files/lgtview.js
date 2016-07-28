@@ -258,8 +258,47 @@ Ext.onReady(function(){
     makeGraphMenu(portlets[0]);
     makeGraphMenu(portlets[1]);
 
+    // Now remove pie charts that the user no longer wants.
+    // Current implementation only removes, does not add (which 
+    // requires a call to view.cgi). User can start fresh 
+    // by clicking reload in the Filters panel.
     var graphs_reload = Ext.create('Ext.Action', {
-        text: 'Reload Graphs'
+        text: 'Reload Graphs',
+        handler: function() {
+            graphMenu.items.each(function(item) {
+
+                var removed = false;
+
+                // Only need to process if one is to be hidden
+                if(item.iconCls == 'hide'){
+
+                    // Unfortunately, with subsequent deletions, will throw 
+                    // off the ability to do simple checks to know which portlet
+                    // the chart resides in. Just iterate over both until found. 
+                    if(removed == false) {
+                        // Can easily make this a function, but the amount of lines
+                        // would be roughly the same and this is prob more clear.
+                        for (var j = 0; j < portlets[0].length; ++j) {
+                            if(item.text == portlets[0][j].title){
+                                portlets[0].splice(j, 1);
+                                removed = true;
+                                break;
+                            }
+                        }
+                    }
+                    if(removed == false) {
+                        for (var j = 0; j < portlets[1].length; ++j) {
+                            if(item.text == portlets[1][j].title){
+                                alert('trying to destroy');
+                                portlets[1].splice(j, 1);
+                                removed = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }); // menu iterator
+        } // handler
     });
 
     var vp = new Ext.Viewport({
@@ -356,7 +395,6 @@ Ext.onReady(function(){
 
             var my_portlet = Ext.create('Ext.Action', {
                 iconCls: 'show',
-                rendorTo: document.body,
                 text: portlet_array[i].title,
                 hideOnClick: false,
                 handler: function() {
