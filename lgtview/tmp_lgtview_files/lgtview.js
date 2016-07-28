@@ -253,22 +253,10 @@ Ext.onReady(function(){
         ]
     });
 
-    // Going to dynamically generate 
+    // Dynamically generate graph selection menu
     var graphMenu = Ext.create('Ext.menu.Menu'); 
-
-    for (var i = 0; i < portlets[0].length; ++i) {
-        var port_action = Ext.create('Ext.Action', {
-            text: portlets[0][i].title
-        });
-        graphMenu.add(port_action);
-    }
-
-    for (var i = 0; i < portlets[1].length; ++i) {
-        var port_action = Ext.create('Ext.Action', {
-            text: portlets[1][i].title
-        });
-        graphMenu.add(port_action);
-    }
+    makeGraphMenu(portlets[0]);
+    makeGraphMenu(portlets[1]);
 
     var graphs_reload = Ext.create('Ext.Action', {
         text: 'Reload Graphs'
@@ -286,7 +274,7 @@ Ext.onReady(function(){
                  dock: 'top',
                  items: [
                      {
-                         text: 'Select Graphs to Remove',
+                         text: 'Select Graphs to Display',
                          menu: graphMenu
                      },{
                          xtype:'tbspacer',
@@ -353,6 +341,32 @@ Ext.onReady(function(){
 
 
         return allfilters;
+    }
+
+    // Will generate a menu of actions that tie to whether or not 
+    // the particular pie graph is to be included in the display.
+    function makeGraphMenu(portlet_array) {
+
+        for (var i = 0; i < portlet_array.length; ++i) {
+
+            var cls = 'show';
+            Ext.util.CSS.createStyleSheet('.show {background-image: url(http://famfamfam.com/lab/icons/silk/icons/accept.png);} .hide {background-image: url(http://famfamfam.com/lab/icons/silk/icons/cancel.png);}');
+
+            var my_portlet = '' + i + portlet_array[i];
+
+            var my_portlet = Ext.create('Ext.Action', {
+                iconCls: 'show',
+                rendorTo: document.body,
+                text: portlet_array[i].title,
+                hideOnClick: false,
+                handler: function() {
+                    cls = cls == 'show' ? 'hide' : 'show';
+                    this.setIconCls(cls);
+                }
+            });
+
+            graphMenu.add(my_portlet);
+        }
     }
 
     function getText(out_type) {
