@@ -131,6 +131,8 @@ Ext.onReady(function(){
 
     var readgrid;
     var configured = false;
+    var metadataMenu = Ext.create('Ext.menu.Menu');
+
     var readstore = new Ext.data.Store({
         model: 'reads',
         pageSize: 100,
@@ -160,7 +162,25 @@ Ext.onReady(function(){
                                     '</a>';
                             }
                         }
-                    });
+
+                        // Excluding both the MongoDB generated ID as well as any metadata that
+                        // follows the naming convention like bac_*. This is because it would not
+                        // make much sense to plot the bac data against the bac_blast_lca (default
+                        // Y-axis), e.g. plotting bac_blast_lca v bac_genus. 
+                        if(col.dataIndex != '_id' && col.dataIndex.search(/bac\_/) == -1) {
+
+                            var md = Ext.create('Ext.Action', {
+                                text:  col.dataIndex,
+                                handler: function() {
+                                    var prev_md = Ext.ComponentQuery.query('#metadata')[0];
+                                    prev_md.setText(col.dataIndex);
+                                }
+                            }); 
+
+                            metadataMenu.add(md);
+                        }
+                    }); // End iteration over metadata columns
+
                     readgrid.reconfigure(store,meta.columns);
                     configured = true;
                 }
@@ -279,7 +299,9 @@ Ext.onReady(function(){
                 xtype: 'label',
                 html: 'Metadata:'
                 },{
-                text: 'euk_ref'
+                text: 'metadata',
+                id: 'metadata',
+                menu: metadataMenu
                 }
             ]
             }
@@ -391,7 +413,7 @@ Ext.onReady(function(){
                          filterform,
                          filtergrid]
                     }],
-             width: 300}],
+             width: 275}],
         layout: 'border',
 
     });
