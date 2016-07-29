@@ -136,7 +136,7 @@ Ext.onReady(function(){
         pageSize: 100,
         proxy: {
             type: 'ajax',
-			timeout: 5000000,
+            timeout: 5000000,
             url: '/cgi-bin/view.cgi',
             extraParams: {
                 'db': conf.db,
@@ -185,28 +185,24 @@ Ext.onReady(function(){
         }),
     });
 
-    var plot_radiogroup = Ext.create('Ext.form.RadioGroup', {
-        xtype: 'radio',
-        title: 'plot type',
-        columns: 3,
-	flex: 1,
-        collapsible: true,
-        items: [
-            {
-            boxLabel: 'Krona',
-            inputValue: 'krona_plot',
-            name: 'plot_type',
-            id: 'k_plot_radio'
-            },{
-            boxLabel: 'heatmap',
-            inputValue: 'heatmap_plot',
-            name: 'plot_type',
-            id: 'hm_plot_radio'
-            },{
-            xtype: 'button',
-            text: 'generate plot'
-            }
-        ]
+    var krona_plot = Ext.create('Ext.Action', {
+        text: 'Krona',
+        handler: function() {
+            var pm = Ext.ComponentQuery.query('#plot_menu')[0];
+            var ct = Ext.ComponentQuery.query('#config_tb')[0];
+            pm.setText('Krona');
+            ct.hide();
+        }
+    });
+
+    var hm_plot = Ext.create('Ext.Action', {
+        text: 'heatmap',
+        handler: function() {
+            var pm = Ext.ComponentQuery.query('#plot_menu')[0];
+            var ct = Ext.ComponentQuery.query('#config_tb')[0];
+            pm.setText('heatmap');
+            ct.show();
+        }
     });
 
     var bacwin = new Ext.Panel({
@@ -216,14 +212,78 @@ Ext.onReady(function(){
         region: 'east',
         flex: 1,
         autoScroll: true,
-        dockedItems: [{
+        dockedItems: [
+            {
             xtype: 'toolbar',
             dock: 'top',
-            items: [{
+            items: [
+                {
                 xtype: 'label',
                 html: "Plot Configuration"
-            }]
-        }],
+                },{
+                xtype: 'tbspacer',
+                flex: 1
+                },{
+                text: 'Krona',
+                id: 'plot_menu',
+                menu: [krona_plot, hm_plot]
+                },{
+                xtype: 'tbspacer',
+                flex: 1
+                },{
+                text: 'Load Plot',
+                handler: function() {
+                    alert('hi');
+                }
+                }
+            ]
+            },{
+            xtype: 'toolbar',
+            dock: 'top',
+            id: 'config_tb',
+            hidden: true,
+            items: [
+                {
+                xtype: 'label',
+                html: 'Taxonomic Rank:'
+                },{
+                xtype: 'textfield',
+                id: 'tax_rank',
+                value: 3,
+                width: 24
+                },'-',
+                {
+                xtype: 'label',
+                html: 'Column Limit:'
+                },{
+                xtype: 'textfield',
+                id: 'limit',
+                value: 30,
+                width: 24
+                },'-',
+                {
+                xtype: 'label',
+                html: 'Abundance Type:'
+                },{
+                text: 'relative',
+                id: 'abundance_type',
+                handler: function() {
+                    if(this.getText() == 'relative'){
+                        this.setText('absolute');
+                    } else {
+                        this.setText('relative');
+                    }
+                }
+                },'-',
+                {
+                xtype: 'label',
+                html: 'Metadata:'
+                },{
+                text: 'euk_ref'
+                }
+            ]
+            }
+        ],
         loader: {
             loadMask: false
         },
@@ -263,7 +323,7 @@ Ext.onReady(function(){
     // requires a call to view.cgi). User can start fresh 
     // by clicking reload in the Filters panel.
     var graphs_reload = Ext.create('Ext.Action', {
-        text: 'Reload Graphs',
+        text: 'Remove Marked Graphs',
         handler: function() {
             graphMenu.items.each(function(item) {
 
@@ -304,7 +364,7 @@ Ext.onReady(function(){
                  dock: 'top',
                  items: [
                      {
-                         text: 'Select Graphs to Display',
+                         text: 'Select Graphs to Keep',
                          menu: graphMenu
                      },{
                          xtype:'tbspacer',
