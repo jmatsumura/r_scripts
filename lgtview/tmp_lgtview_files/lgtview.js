@@ -276,26 +276,17 @@ Ext.onReady(function(){
                     // off the ability to do simple checks to know which portlet
                     // the chart resides in. Just iterate over both until found. 
                     if(removed == false) {
-                        // Can easily make this a function, but the amount of lines
-                        // would be roughly the same and this is prob more clear.
-                        for (var j = 0; j < portlets[0].length; ++j) {
-                            if(item.text == portlets[0][j].title){
-                                portlets[0].splice(j, 1);
-                                removed = true;
-                                break;
-                            }
-                        }
+
+                        removed = removePieChart(item, portlets[0]);
                     }
                     if(removed == false) {
-                        for (var j = 0; j < portlets[1].length; ++j) {
-                            if(item.text == portlets[1][j].title){
-                                alert('trying to destroy');
-                                portlets[1].splice(j, 1);
-                                removed = true;
-                                break;
-                            }
-                        }
+
+                        removed = removePieChart(item, portlets[1]);
                     }
+
+                    // Until reloading these pie charts is possible, prevent 
+                    // interaction with the field button but show what was removed
+                    item.disable(); 
                 }
             }); // menu iterator
         } // handler
@@ -405,6 +396,26 @@ Ext.onReady(function(){
 
             graphMenu.add(my_portlet);
         }
+    }
+
+    // Function to eliminate the portlet pie chart displays one at a time
+    function removePieChart(meta_item, portlet_array) {
+
+        var found = false;
+
+        for (var i = 0; i < portlet_array.length; ++i) {
+
+            if(meta_item.text == portlet_array[i].title){
+                var m_id = '#' + portlet_array[i].title;
+                var pc = Ext.ComponentQuery.query(m_id)[0];
+                pc.destroy();
+                portlet_array.splice(i,1); // need to reformat array
+                found = true;
+                break;
+            }
+        }
+
+        if(found) {return true;} else {return false;}
     }
 
     function getText(out_type) {
@@ -599,11 +610,13 @@ Ext.onReady(function(){
         if(portlets[0].length <= portlets[1].length) {
             portlets[0].push({title: '' + params.name,
                               height: 200,
+                              id: '' + params.name,
                               items: newchart});
         }
         else {
             portlets[1].push({title: '' + params.name,
                               height: 200,
+                              id: '' + params.name,
                               items: newchart});
         }
         
