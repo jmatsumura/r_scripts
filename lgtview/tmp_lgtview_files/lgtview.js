@@ -5,7 +5,7 @@ Ext.onReady(function(){
      var conf = {
         db: 'lgtview_example',
         host: '172.18.0.1:27017',
-		site: 'http://localhost:8080/twinblast.html'
+        site: 'http://localhost:8080/twinblast.html'
     };
     var allStores = [];
     var portlets = {
@@ -32,6 +32,12 @@ Ext.onReady(function(){
                'title': 'Bac Genus',
                'modname': 'bac_genus'});
 // END CHART SECTION
+
+    // Curation is an integral component, always include
+    addWindow({'name': 'curation_note',
+               'title': 'Curation Note',
+               'modname': 'curation_note'
+              });
 
     Ext.regModel('filters',{
         fields: [
@@ -594,11 +600,38 @@ Ext.onReady(function(){
         });
          
         Ext.each(allStores, function(store) {
-        
-                Ext.apply(store.getProxy().extraParams,
-                    {cond: Ext.encode(allfilters),
-                });
-                store.load();
+       
+                // Right here, need to make a decision for whether or not
+                // the user has chosen to remove this data from the current
+                // instance. If the user has, stop CGI calls. 
+                var curr_pie = store.model;
+                var exclude = false;
+
+                // First need to do a check for whether this store is a pie
+                // chart or not. Only do removal check if pie chart.
+                if(curr_pie != 'reads' && curr_pie != 'filters' ) {
+
+                    // This menu often won't be that large, OK to just iterate
+                    // over instead of adding in more attributes for querying.
+                    graphMenu.items.each(function(item) {
+
+                        if(item.text == curr_pie) {
+                            exclude = true;
+                            break;
+                        }
+                    });
+
+                    if(exclude == true) {
+                        continue;
+                    }
+                    else {
+
+                        Ext.apply(store.getProxy().extraParams,
+                            {cond: Ext.encode(allfilters),
+                        });
+                        store.load();
+                    }
+                }
         });
     }
     

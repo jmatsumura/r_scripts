@@ -30,6 +30,7 @@ my $file_format = $cgi->param('file_format');
 my $site_holder = $cgi->param('site');
 
 my $mongo_conn = MongoDB->connect($host);
+#$mongo_conn->query_timeout(-1);
 my $mongo_db = $mongo_conn->get_database($db);
 my $mongo_coll = $mongo_db->get_collection('bwa_mapping');
 my $outputcollname = "$criteria\_mappings";
@@ -44,6 +45,21 @@ $json->convert_blessed;
 if($format eq 'krona') {
     &makeKronaTree();
     exit;
+}
+
+# Regardless of the types of conditions passed, always want to
+# remove old instances of the curation counts as these can be 
+# updated in TwinBLAST and will not be recognized as having changed
+# due to the way this script was originally set up. Thus, this next
+# step aims to remove old collections/counts so that they have to 
+# be rebuilt each time ensuring any change is recognized.
+my @cols = $mongo_db->collection_names;
+foreach my $col_map (@cols) {
+    local $_ = $col_map;
+    if ( m/^curation\_note.*/ ) {
+        my $coll_to_drop = $mongo_db->get_collection($col_map);
+        $coll_to_drop->drop;
+    }
 }
 
 print STDERR "output to $outputcollname\n";
@@ -157,6 +173,7 @@ sub makeKronaTree {
     if(-e "$TMP_DIR/$md5.html") {
         print "Content-type: text/plain\n\n";
         print to_json({'file' => "$TMP_URL/$md5.html"});
+        #print `cat $md5.html`;
         exit;
     }
     setOption('out',"$TMP_DIR/$md5.html");
@@ -187,6 +204,7 @@ sub makeKronaTree {
         \@attributeDisplayNames,
         []);
     print to_json({'file' => "$TMP_URL/$md5.html"});
+    #print `cat $md5.html`;
 }
 
 sub pullFromColl2 {
@@ -195,6 +213,7 @@ sub pullFromColl2 {
         $condhash = from_json($cond);
     }
     my $cursor = $mongo_coll->query($condhash);
+#    my $cursor = $mongo_coll->query($condhash)->limit($limit)->skip($start)->fields({'read'=>1});
     my $total = $cursor->count();
     my $fields = [];
     my $columns = [];
@@ -212,6 +231,7 @@ sub pullFromColl2 {
         push(@$fields, {'name' => $key});
         $i++;
     }
+#    my @res = $cursor->skip($start)->limit($limit)->all();
     $result = {'total'=> $total,'retval' => \@res, 'metaData' => {'fields' => $fields,'columns' => $columns}};
 }
 
@@ -243,6 +263,7 @@ sub pullFromColl {
     if($other->{count}) {
         push(@retval, $other);
     }
+#   my @srted_vals = sort {$a->{'_id'} <=> $b->{'_id'}} @res;
     $result = {'retval' => \@retval};
 }
 
@@ -368,6 +389,9 @@ RED
                                    "out" => $outputcollname,
                                    "query" => $otherconds
             );
+#        if($cond) {
+#            $cmd->{cond} = $scond;
+#        }
         $mongo_db->run_command($cmd);
     }
 }
@@ -430,9 +454,15 @@ GROUP
             'key' => {$criteria => 1},
             'initial' => {'count' => 0.0},
             '$reduce' => MongoDB::Code->new(code => $red)
+#            'cond' => $condfield { => {'$regex' => qr/^$cond/}}
         }
     };
+##    if($condfield eq 'scientific') {
+ #       $cmd->{group}->{cond} = {$condfield => {'$regex' => qr/^$cond/}};
+ #   }
+ #   else {
         $cmd->{group}->{cond} = $scond;
+#    }
     $result = $mongo_db->run_command($cmd);
     my @retval;
     my $res = $result->{retval};
