@@ -141,6 +141,7 @@ Ext.onReady(function(){
 
     var readstore = new Ext.data.Store({
         model: 'reads',
+        storeId: 'reads',
         pageSize: 100,
         proxy: {
             type: 'ajax',
@@ -598,39 +599,45 @@ Ext.onReady(function(){
                 Ext.getDom('bac-iframe').src = res.file;
             }
         });
-         
+        
+        var read_storage = Ext.getStore('reads');
         Ext.each(allStores, function(store) {
        
                 // Right here, need to make a decision for whether or not
                 // the user has chosen to remove this data from the current
                 // instance. If the user has, stop CGI calls. 
-                var curr_pie = store.model;
                 var exclude = false;
 
                 // First need to do a check for whether this store is a pie
                 // chart or not. Only do removal check if pie chart.
-                if(curr_pie != 'reads' && curr_pie != 'filters' ) {
+                if(store != read_storage) {
 
                     // This menu often won't be that large, OK to just iterate
                     // over instead of adding in more attributes for querying.
                     graphMenu.items.each(function(item) {
 
-                        if(item.text == curr_pie) {
-                            exclude = true;
-                            break;
+                        var curr_pie = Ext.getStore(item.text);
+                        if(store == curr_pie) {
+
+                            if(item.iconCls == 'hide'){
+                                exclude = true;
+                            }
                         }
                     });
 
-                    if(exclude == true) {
-                        continue;
-                    }
-                    else {
+                    if(exclude != true) {
 
                         Ext.apply(store.getProxy().extraParams,
                             {cond: Ext.encode(allfilters),
                         });
                         store.load();
                     }
+                }
+                else {
+                    Ext.apply(store.getProxy().extraParams,
+                        {cond: Ext.encode(allfilters),
+                    });
+                    store.load();
                 }
         });
     }
@@ -663,6 +670,7 @@ Ext.onReady(function(){
 
         var newstore = new Ext.data.Store({
             model: params.modname,
+            storeId: params.modname,
             autoLoad: false,
             proxy: {
                 type: 'ajax',
