@@ -1,62 +1,78 @@
-Ext.regModel('Metadata', {
-    fields: [
-        {type: 'string', name: 'name'}
+var ds = Ext.create('Ext.data.Store', {
+    fields: ['name', 'filter', 'pie', 'id', 'operator'],
+    data: [
+    {"name": "euk_genus1", "filter": false, "pie": false, "id": "euk_genus1", "operator" : 'matches'},
+    {"name": "euk_genus2", "filter": false, "pie": false, "id": "euk_genus2", "operator" : 'matches'},
+    {"name": "euk_genus3", "filter": false, "pie": false, "id": "euk_genus3", "operator" : 'matches'}
     ]
 });
 
-var ds = [
-    {"name": "euk_genus"},
-    {"name": "euk_length"},
-    {"name": "bac_genus"}
-]
-
-var store = Ext.create('Ext.data.Store', {
-    model: 'Metadata',
-    data: ds
+Ext.Loader.setConfig({
+    enabled: true,
+    paths: {
+        'Ext.ux': 'ux/'
+    }
 });
+
+Ext.require('Ext.ux.CheckColumn');
 
 Ext.onReady(function(){
 
     // Path to script to populate the form with relevant info
     var EXTRACT_METADATA_URL = '/cgi-bin/extractLoadingData.cgi'; 
 
-
-    var pie_combo = Ext.create('Ext.form.field.ComboBox', {
-        fieldLabel: 'Select metadata',
-        multiSelect: true,
-        displayField: 'name',
-        store: store,
-        queryMode: 'local'
-    });
-
-    var filter_combo = Ext.create('Ext.form.field.ComboBox', {
-        fieldLabel: 'Filter',
-        multiSelect: false,
-        displayField: 'name',
-        store: store
-    });
-
-    var filter_combo2 = Ext.create('Ext.form.field.ComboBox', {
-        fieldLabel: 'Operator',
-        multiSelect: false,
-        displayField: 'name',
-        store: store
+    var grid = Ext.create('Ext.grid.Panel', {
+        store: ds,
+        columns: [
+            {
+            xtype: 'checkcolumn',
+            text: 'Pie Graph',
+            dataIndex: 'pie',
+            id: 'pie',
+            align: 'center',
+            listeners: {
+                'checkchange': function(col, idx, isChecked) {
+                    var rec = grid.store.getAt(idx);
+                    rec.set("filter", false);
+                }
+            }
+            },
+            {
+            xtype: 'checkcolumn',
+            text: 'Filter',
+            dataIndex: 'filter',
+            align: 'center',
+            listeners: {
+                'checkchange': function(col, idx, isChecked) {
+                    var rec = grid.store.getAt(idx);
+                    rec.set("pie", false);
+                }
+            }
+            },
+            {text: "Metadata", width: 150, dataIndex: 'name', flex: 1},
+            {
+            text: "Comparison Operator", 
+            width: 150, 
+            dataIndex: 'operator',
+            align: 'center',
+            listeners: {
+                cellclick: function(record, tr, rowIndex, e, eOpts){
+                    alert('hi');
+                    var rec = grid.store.getAt(rowIndex);
+                    rec.set("operator", "<");
+                }
+            }
+            }
+        ],
+        columnLines: true,
+        frame: true,
+        title: 'Configure Pie Graphs and Filters'
     });
 
     var middlepanel = Ext.create('Ext.panel.Panel', ({
         region: 'center',
-        title: 'Pie Graph Configuration',
         flex: 1,
-        items: [pie_combo]
-    }));
-
-    var bottompanel = Ext.create('Ext.panel.Panel', ({
-        autoScroll: true,
-        region: 'south',
-        title: 'Filter Configuration',
-        flex: 1,
-        layout: 'hbox',
-        items: [filter_combo, filter_combo2]
+        items: [grid]
     }));
 
     var submitSRA = Ext.create('Ext.Button', {
@@ -102,7 +118,7 @@ Ext.onReady(function(){
         layout: 'border',
         autoScroll: true,
         defaults: {split: true},
-        items: [toppanel,middlepanel,bottompanel,lastpanel]
+        items: [toppanel,middlepanel,lastpanel]
     });
     
     vp.doLayout();
