@@ -1,9 +1,9 @@
 var ds = Ext.create('Ext.data.Store', {
     fields: ['name', 'filter', 'pie', 'id', 'operator'],
     data: [
-    {"name": "euk_genus1", "filter": false, "pie": false, "id": "euk_genus1", "operator" : 'matches'},
-    {"name": "euk_genus2", "filter": false, "pie": false, "id": "euk_genus2", "operator" : 'matches'},
-    {"name": "euk_genus3", "filter": false, "pie": false, "id": "euk_genus3", "operator" : 'matches'}
+    {"name": "euk_genus1", "filter": false, "pie": false, "id": "euk_genus1", "operator" : 'NA'},
+    {"name": "euk_genus2", "filter": false, "pie": false, "id": "euk_genus2", "operator" : 'NA'},
+    {"name": "euk_genus3", "filter": false, "pie": false, "id": "euk_genus3", "operator" : 'NA'}
     ]
 });
 
@@ -23,6 +23,7 @@ Ext.onReady(function(){
 
     var grid = Ext.create('Ext.grid.Panel', {
         store: ds,
+        selType: 'cellmodel',
         columns: [
             {
             xtype: 'checkcolumn',
@@ -34,6 +35,7 @@ Ext.onReady(function(){
                 'checkchange': function(col, idx, isChecked) {
                     var rec = grid.store.getAt(idx);
                     rec.set("filter", false);
+                    rec.set("operator", 'NA');
                 }
             }
             },
@@ -46,6 +48,7 @@ Ext.onReady(function(){
                 'checkchange': function(col, idx, isChecked) {
                     var rec = grid.store.getAt(idx);
                     rec.set("pie", false);
+                    rec.set("operator", 'matches');
                 }
             }
             },
@@ -55,18 +58,28 @@ Ext.onReady(function(){
             width: 150, 
             dataIndex: 'operator',
             align: 'center',
-            listeners: {
-                cellclick: function(record, tr, rowIndex, e, eOpts){
-                    alert('hi');
-                    var rec = grid.store.getAt(rowIndex);
-                    rec.set("operator", "<");
-                }
-            }
             }
         ],
         columnLines: true,
         frame: true,
-        title: 'Configure Pie Graphs and Filters'
+        title: 'Configure Pie Graphs and Filters',
+        listeners: {
+            cellclick: function(view, td, cellIndex, record, tr, rowIndex, e, eOpts){
+                if(cellIndex == 3){
+                    if(record.get('filter') === true){
+                        if(record.get('operator') == 'matches'){
+                            record.set('operator', '<');
+                        } 
+                        else if(record.get('operator') == '<'){
+                            record.set('operator', '>');
+                        }
+                        else{
+                            record.set('operator', 'matches');
+                        }
+                    }
+                }
+            }
+        }
     });
 
     var middlepanel = Ext.create('Ext.panel.Panel', ({
