@@ -45,11 +45,12 @@ if ( @ARGV != 3) {
 
 open(my $out, ">$out_file") or die "Cannot open $out_file for writing";
 open(my $fh, $blast_file) or die "Can't open $blast_file!";
-open(my $fh2, $id_list) or die "Can't open $id_list!"; # just a check to see if it can be read
 
 my $blast_entry; # start fresh at every entry, only include those that are relevant
 my $read_id;
 my $found_entry = 0;
+my $valid_pair = 0; # know that read pairs follow one another, so print the second one fast
+my $entry_count = 0; # aids in delimiting different entries
 my $footer = 0;
 
 while (my $line = <$fh>) {
@@ -63,21 +64,50 @@ while (my $line = <$fh>) {
             # This is the point where if this result is tied to one of the results from the
             # metadata file it must be included. The metadata file should already have subsetted
             # the data to be that belonging only to pairs so no need to do a check for that here. 
-			if (grep{/$read_id/} $fh2){
-				print $out $blast_entry;
+			# Need to iterate over this file each time.
+			open(my $fh2, $id_list) or die "Can't open $id_list!"; 
+			while (my $line2 = <$fh2>) {
+				if($line2 =~ /$read_id/){
+					print $out $blast_entry;
+					$valid_pair = 1;
+					last;
+				}
 			}
-			print $out $blast_entry;
+			close $fh2;
 
 			# The BLAST result has been processed, OK to reinitialize all.
 			$read_id = '';
 			$blast_entry = '';
+			$blast_entry .= $line;
    
 		} elsif($line =~ /^Query=.*/) {
 			$blast_entry .= $line;
-			$line =~ /^Query=\s(.*)(\/|\_).*$/;
-			$read_id = $1;
+			$line =~ /^Query=\s(.*)\/(1|2)$/;
+			$read_id = quotemeta "$1";
 
 		} else { # inbetween sections, append to entry regardless
+			$blast_entry .= $line;
+		}
+
+	} elsif($valid_pair == 1) {
+	
+		if($line =~ /^BLAST.*/) {
+
+			$blast_entry .= $line;
+			$entry_count++;
+
+			if($entry_count == 2) { # found the first mate in a pair again
+				print $out $blast_entry;
+				$entry_count = 0;
+				$valid_pair = 0;
+				$found_entry = 1;
+			}
+
+		} elsif($line =~ /\s\sDatabase:.*/) { # In case this is at the end of file
+			print $out $blast_entry;
+			$valid_pair = 0;
+
+		} else { # lines inbetween entries
 			$blast_entry .= $line;
 		}
 
@@ -96,10 +126,11 @@ while (my $line = <$fh>) {
 		if($line =~ /^BLAST.*/) {
     	    $found_entry = 1;
 			$blast_entry .= $line;
+		} else { # already seen the BLAST header and still in the main body
+			$found_entry = 1;
 		}
 	}
 }
 
 close $fh;
-close $fh2;
 close $out;
