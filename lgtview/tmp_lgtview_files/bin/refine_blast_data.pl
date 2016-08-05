@@ -47,88 +47,71 @@ open(my $out, ">$out_file") or die "Cannot open $out_file for writing";
 open(my $fh, $blast_file) or die "Can't open $blast_file!";
 
 my $blast_entry; # start fresh at every entry, only include those that are relevant
-my $read_id;
-my $found_entry = 0;
-my $valid_pair = 0; # know that read pairs follow one another, so print the second one fast
-my $entry_count = 0; # aids in delimiting different entries
-my $footer = 0;
+my $read_id; # read pair ID
+my $found_count = 0; # keep track of how many entries
+my $results_done = 0; # done with results, output matrix data
 
 while (my $line = <$fh>) {
 
-	if($found_entry == 1){
+	if($line =~ /^BLAST.*/ && $found_count == 0){
 
-		if($line =~ /^BLAST.*/) {
-			$found_entry = 0;
-			$blast_entry .= "\n\n";
-            
-            # This is the point where if this result is tied to one of the results from the
-            # metadata file it must be included. The metadata file should already have subsetted
-            # the data to be that belonging only to pairs so no need to do a check for that here. 
-			# Need to iterate over this file each time.
+		$blast_entry .= $line;
+		$found_count = 1;
+
+	} elsif($line =~ /^BLAST.*/ && $found_count == 1) {
+
+		$blast_entry .= $line;
+		$found_count = 2;
+
+	} elsif($found_count == 1) { # section following first BLAST header
+
+		$blast_entry .= $line;
+
+		# Only need to pull the query ID for one mate, do it for second
+
+	} elsif($found_count == 2) { # section following second BLAST header
+
+		if($line =~ /^Query=.*/) {
+			$line =~ /^Query=\s(.*)\/(1|2)$/;
+			$read_id = quotemeta "$1";
+
+		} elsif ($line =~ /^BLAST.*/) {
+
 			open(my $fh2, $id_list) or die "Can't open $id_list!"; 
 			while (my $line2 = <$fh2>) {
 				if($line2 =~ /$read_id/){
 					print $out $blast_entry;
-					$valid_pair = 1;
 					last;
 				}
 			}
 			close $fh2;
 
-			# The BLAST result has been processed, OK to reinitialize all.
-			$read_id = '';
 			$blast_entry = '';
-			$blast_entry .= $line;
-   
-		} elsif($line =~ /^Query=.*/) {
-			$blast_entry .= $line;
-			$line =~ /^Query=\s(.*)\/(1|2)$/;
-			$read_id = quotemeta "$1";
+			$read_id = '';
 
-		} else { # inbetween sections, append to entry regardless
-			$blast_entry .= $line;
-		}
+		} elsif($line =~ /\s\sDatabase:.*/) {
 
-	} elsif($valid_pair == 1) {
-	
-		if($line =~ /^BLAST.*/) {
-
-			$blast_entry .= $line;
-			$entry_count++;
-
-			if($entry_count == 2) { # found the first mate in a pair again
-				print $out $blast_entry;
-				$entry_count = 0;
-				$valid_pair = 0;
-				$found_entry = 1;
+			open(my $fh2, $id_list) or die "Can't open $id_list!"; 
+			while (my $line2 = <$fh2>) {
+				if($line2 =~ /$read_id/){
+					print $out $blast_entry;
+					last;
+				}
 			}
+			close $fh2;
 
-		} elsif($line =~ /\s\sDatabase:.*/) { # In case this is at the end of file
-			print $out $blast_entry;
-			$valid_pair = 0;
-
-		} else { # lines inbetween entries
-			$blast_entry .= $line;
+			$blast_entry = '';
+			$read_id = '';
+			$results_done = 1;
+			$found_count = 0; # escape the earlier ifs
+			print $out $line;
 		}
 
-	# Tag on the end total BLAST search report at the end of the file so that further
-	# modules can parse the file correctly. Note that this data will be incorrect if any
-	# of the initial results are removed. These results are not used in TwinBLAST though.
-	} elsif($line =~ /\s\sDatabase:.*/) {
-		$footer = 1;
+		$blast_entry .= $line;
+
+	} elsif($results_done == 1) { # output footer of raw results
+
 		print $out $line;
-
-	} elsif($footer == 1) {
-		print $out $line;
-
-	} else {
-
-		if($line =~ /^BLAST.*/) {
-    	    $found_entry = 1;
-			$blast_entry .= $line;
-		} else { # already seen the BLAST header and still in the main body
-			$found_entry = 1;
-		}
 	}
 }
 
