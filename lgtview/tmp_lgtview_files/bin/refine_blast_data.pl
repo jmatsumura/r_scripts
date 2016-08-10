@@ -18,7 +18,7 @@ This script takes three arguments:
 
 Thus, to use this script you would enter:
 
-./conceal_blast_data.pl --blast_file=blast.results --id_list=id_list.txt --out_file=my_concealed_blast.results
+./refine_blast_data.pl --blast_file=blast.results --id_list=id_list.txt --out_file=my_concealed_blast.results
 
 Note that the id_list.txt file just needs any trace of the read present and does not
 require a specific format. Thus, be wary of this as the BLAST file will include any results
