@@ -42,15 +42,20 @@ my $final_blast = "./final_blast.out";
 
 # Need to process multiple outputs of LGTSeek as LGTView is truly useful when comparing
 # numerous different sets of metadata against one another. 
-my $base_dir = "./sra_list.txt";
+my $base_dir = "./sra_list2.txt";
 my $metadata_file = "/sra_metadata.csv";
 my $lgt_hits_file = "/lgt_by_clone.txt";
 my $blast_results_file = "/blastn.out";
+my $blast_list = "./blast_list.txt";
 my $uniq_sra = 0; # check to see if multiple SRA results are present
 my @overall_metadata; # compile a list of metadata fields that have values tied to them
+my @individual_metadata; # array of arrays for each set of headers present
 
 open(my $sra_list_file, "<$base_dir" || die "Can't open file $base_dir");
+open(my $blast_list_file, ">$blast_list" || die "Can't open file $blast_list");
 
+# Would make sense to run this in parallel, implement this if the number of files gets
+# to be quite high. 
 while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output result
 
 	$uniq_sra++;
@@ -72,7 +77,9 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 
 		if($firstLine == 0) {
 			@sra_headers = split(/\,/, $line); # banking on SRA using commas for separation only 
+			push @sra_headers, 'curation_note'; # account for TB curation note here
 			$firstLine = 1;
+			push @individual_metadata, \@sra_headers;
 	
 		} else {
 			@sra_values = split(/\,/, $line); 
@@ -92,9 +99,9 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 			if($sra_headers[$idx] ne 'ReadHash' && $sra_headers[$idx] ne 'RunHash'){
 
 				if($sra_headers[$idx] ~~ @overall_metadata) {
-					continue;
+					next;
 				} else {
-					# Build a final set of metadata from all metadata present
+					# Use this final dataset to populate the table for generateLGTView.js
 					push @overall_metadata, $sra_headers[$idx];
 				}
 			}
@@ -117,14 +124,17 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 		if($firstLine == 0){
 
 			my $curr_metadata = join("\t", @sra_headers);
-			print $out "$line\t$curr_metadata\n";
+			# Append curation_note field here for TB so that the pie charts can be
+			# subsetted by an actual value and not 'Other' by default which does
+			# not work as a filter.
+			print $out "$line\t$curr_metadata\tcuration_note\n"; 
 
 			$firstLine = 1;
 
 		} else {
 
 			my $curr_values = join("\t", @sra_values);
-			print $out "$line\t$curr_values\n";
+			print $out "$line\t$curr_values\tNA\n";
 		}
 	}
 
@@ -133,11 +143,44 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 
 	# Process the BLAST results so that TwinBLAST only houses those that match. This will be done by
 	# refine_blast_data.pl
-	#$sra_dirs =~ /^.*\/(.*)$/; # grab the SRA ID
-	#$sra_id = $1;
-	`./refine_blast_data.pl $blast_in $lgt_in $sra_dirs$single_blast`;
+	#`./refine_blast_data.pl $blast_in $lgt_in $sra_dirs$single_blast`;
+
+	print $blast_list_file "$sra_dirs$single_blast\n"; # file for merging
 }
 
-# Once all the relevant directories have been processed, if multiple present consolidate to 
-# a single BLAST file to accommodate TwinBLAST. This functionality will be accomplished by 
-# merge_blast_or_bam_lists.pl 
+# Send the relevant JSON info for the filter/graph table in generateLGTView.js
+#@overall_metadata;
+
+close $sra_list_file;
+close $blast_list_file;
+
+# Once all the relevant directories have been processed, if multiple present need to consolidate to both
+# a single BLAST file and a single metadata file to accommodate TwinBLAST viewer and LGTView loader.
+if($uniq_sra > 1){
+
+	my @uniform_metadata;
+
+	# Building a final metadata file is not straightforward. Need to build a metadata file that
+	# contains all the shared AND distinct fields between different sets of data. In addition to 
+	# this restraint, the order of the metadata fields also needs to be equivalent and the order
+	# maintained across the values associated with the data. The end result must be a uniform
+	# header shared by all the different outputs.
+
+	# Iterate over 2D array where each index of outer array attaches to an array of metadata fields
+	foreach my $refs (@individual_metadata){
+		foreach my $md_array_vals (@$refs) {
+			if($md_array_vals ~~ @uniform_metadata) {
+				next;
+			} else {
+				push @uniform_metadata, $md_array_vals;
+			}
+		}
+	}
+
+	# At this point, all unique metadata fields are present and they need to be used to build a 
+	# final metadata file that accommodates each individual metadata file into a uniform final one. 
+
+
+	# Use merge_blast_or_bam_lists.pl to merge the BLAST files
+	#`./merge_blast_or_bam_lists.pl $blast_list blast $final_blast`
+}
