@@ -92,11 +92,11 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 
 	# For letting a user choose which metadata to display, only concerned with those metadata 
 	# fields that have a value and aren't comprised of a hash value.
-	foreach my $x (@sra_values){
+	foreach my $x (@sra_values) {
 
-		if($x ne ''){ 
+		if($x ne '') { 
 
-			if($sra_headers[$idx] ne 'ReadHash' && $sra_headers[$idx] ne 'RunHash'){
+			if($sra_headers[$idx] ne 'ReadHash' && $sra_headers[$idx] ne 'RunHash') {
 
 				if($sra_headers[$idx] ~~ @overall_metadata) {
 					next;
@@ -121,7 +121,7 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 	while (my $line = <$l_infile>) {
 		chomp $line;
 
-		if($firstLine == 0){
+		if($firstLine == 0) {
 
 			my $curr_metadata = join("\t", @sra_headers);
 			# Append curation_note field here for TB so that the pie charts can be
@@ -156,7 +156,7 @@ close $blast_list_file;
 
 # Once all the relevant directories have been processed, if multiple present need to consolidate to both
 # a single BLAST file and a single metadata file to accommodate TwinBLAST viewer and LGTView loader.
-if($uniq_sra > 1){
+if($uniq_sra > 1) {
 
 	my @uniform_metadata;
 
@@ -167,7 +167,7 @@ if($uniq_sra > 1){
 	# header shared by all the different outputs.
 
 	# Iterate over 2D array where each index of outer array attaches to an array of metadata fields
-	foreach my $refs (@individual_metadata){
+	foreach my $refs (@individual_metadata) {
 		foreach my $md_array_vals (@$refs) {
 			if($md_array_vals ~~ @uniform_metadata) {
 				next;
@@ -179,8 +179,41 @@ if($uniq_sra > 1){
 
 	# At this point, all unique metadata fields are present and they need to be used to build a 
 	# final metadata file that accommodates each individual metadata file into a uniform final one. 
+	open(my $out, "<$final_metadata" || die "Can't open file $final_metadata");
+	print $out join("\t", @uniform_metadata);
 
+	open(my $sra_list_file, "<$base_dir" || die "Can't open file $base_dir");
+
+	# Iterate over each individual metadata file and print out in an order respective to that
+	# which was obtained while forming @uniform_metadata. Note that missing fields need to be
+	# accounted for in each row as well.
+	while (my $sra_dirs = <$sra_list_file>) { 
+
+		my @curr_header; # split the header of the current metadata file
+		my @order_needed; # use this to identify which order the current file needs to print in
+		$firstLine = 0;
+
+		open(my $curr_md_file, "<$sra_dirs$single_metadata" || die "Can't open file $sra_dirs$single_metadata");
+
+		while (my $line = <$curr_md_file>) {
+
+			if($firstLine == 0) {
+				@curr_headers = split(/\t/, $line); 
+				$firstLine = 1;
+
+			} else {
+
+			}
+		}
+		close $curr_md_file;
+	}
+
+	close $out;
+	close $sra_list_file;
 
 	# Use merge_blast_or_bam_lists.pl to merge the BLAST files
 	#`./merge_blast_or_bam_lists.pl $blast_list blast $final_blast`
 }
+
+# As a final step, append certain syntax like 'list' to the relative metadata fields
+# to accommodate the loading script for MongoDB. 
