@@ -34,6 +34,12 @@ use warnings;
 #use CGI;
 #use JSON;
 
+# Output files that will be expected 
+my $single_metadata = "/single_metadata.out"; # just one run output
+my $single_blast = "/single_blast.out";
+my $final_metadata = "./final_metadata.out"; # combined run outputs
+my $final_blast = "./final_blast.out";
+
 # Need to process multiple outputs of LGTSeek as LGTView is truly useful when comparing
 # numerous different sets of metadata against one another. 
 my $base_dir = "./sra_list.txt";
@@ -47,17 +53,21 @@ open(my $sra_list_file, "<$base_dir" || die "Can't open file $base_dir");
 
 while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output result
 
-	chomp $sra_dirs;
-	my $in = $sra_dirs . $metadata_file;
-	open(my $infile, "<$in" || die "Can't open file $in");
 	$uniq_sra++;
 
-	my $firstLine = 0;
+	chomp $sra_dirs;
+	my $meta_in = $sra_dirs . $metadata_file;
+	my $lgt_in = $sra_dirs . $lgt_hits_file;
+	my $blast_in = $sra_dirs . $blast_results_file;
+
 	my @sra_headers; # metadata fields
 	my @sra_values;
 
-	while (my $line = <$infile>) {
+	my $firstLine = 0;
 
+	open(my $m_infile, "<$meta_in" || die "Can't open file $meta_in");
+
+	while (my $line = <$m_infile>) {
 		chomp $line;
 
 		if($firstLine == 0) {
@@ -69,11 +79,12 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 		}
 	}
 
-	close $infile;
+	close $m_infile;
 
 	my $idx = 0;
 
-	# Only concerned with those metadata fields that have a value and aren't a hash value.
+	# For letting a user choose which metadata to display, only concerned with those metadata 
+	# fields that have a value and aren't comprised of a hash value.
 	foreach my $x (@sra_values){
 
 		if($x ne ''){ 
@@ -92,14 +103,39 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 		$idx++;
 	}
 
-=head
+	# Now append all metadata from SRA to the lgt_by_clone.txt file. Add handling in this
+	# section if certain fields, like the hashes or consent, are desired to be omitted. 
+
+	$firstLine = 0;
+
+	open(my $l_infile, "<$lgt_in" || die "Can't open file $lgt_in");
+	open(my $out, ">$sra_dirs$single_metadata" || die "Can't open file $lgt_in");
+
+	while (my $line = <$l_infile>) {
+		chomp $line;
+
+		if($firstLine == 0){
+
+			my $curr_metadata = join("\t", @sra_headers);
+			print $out "$line\t$curr_metadata\n";
+
+			$firstLine = 1;
+
+		} else {
+
+			my $curr_values = join("\t", @sra_values);
+			print $out "$line\t$curr_values\n";
+		}
+	}
+
+	close $l_infile;
+	close $out;
+
 	# Process the BLAST results so that TwinBLAST only houses those that match. This will be done by
 	# refine_blast_data.pl
-	$sra_dirs =~ /^.*\/(.*)$/; # grab the SRA ID
-	$sra_id = $1;
-	my $tb_outfile = "./" . $sra_id . "_blast.out";
-	`./refine_blast_data.pl --blast_file=$blast_file --id_list=$lgt_hits --out_file=$tb_outfile`;
-=cut
+	#$sra_dirs =~ /^.*\/(.*)$/; # grab the SRA ID
+	#$sra_id = $1;
+	`./refine_blast_data.pl $blast_in $lgt_in $sra_dirs$single_blast`;
 }
 
 # Once all the relevant directories have been processed, if multiple present consolidate to 

@@ -12,13 +12,13 @@ Script to refine raw BLAST results to only those hits that are present in anothe
 
 This script takes three arguments:
 
---blast_file  = /path/to/blast/file
---id_list = /path/to/id/list
---out_file = /path/to/output/file
+blast_file  e.g. /path/to/blast/file
+id_list e.g. /path/to/id/list
+out_file e.g. /path/to/output/file
 
 Thus, to use this script you would enter:
 
-./refine_blast_data.pl --blast_file=blast.results --id_list=id_list.txt --out_file=my_concealed_blast.results
+./refine_blast_data.pl blast.results id_list.txt my_final_blast.results
 
 Note that the id_list.txt file just needs any trace of the read present and does not
 require a specific format. Thus, be wary of this as the BLAST file will include any results
