@@ -166,50 +166,74 @@ if($uniq_sra > 1) {
 	# maintained across the values associated with the data. The end result must be a uniform
 	# header shared by all the different outputs.
 
-	# Iterate over 2D array where each index of outer array attaches to an array of metadata fields
+	# Iterate over 2D array where each index of outer array attaches to an array of metadata fields.
+	# While doing so, note the positions of each piece of metadata.
+	my %md_order;
+	my $idx=0;
 	foreach my $refs (@individual_metadata) {
 		foreach my $md_array_vals (@$refs) {
 			if($md_array_vals ~~ @uniform_metadata) {
 				next;
 			} else {
 				push @uniform_metadata, $md_array_vals;
+				$md_order{$md_array_vals} = $idx;
+				$idx++;
 			}
 		}
 	}
 
+	$idx--; # want the last filled metadata position for the array later
+
 	# At this point, all unique metadata fields are present and they need to be used to build a 
 	# final metadata file that accommodates each individual metadata file into a uniform final one. 
-	open(my $out, "<$final_metadata" || die "Can't open file $final_metadata");
-	print $out join("\t", @uniform_metadata);
+	open(my $outfile, ">$final_metadata" || die "Can't open file $final_metadata");
+	print $outfile join("\t", @uniform_metadata) . "\n";
 
-	open(my $sra_list_file, "<$base_dir" || die "Can't open file $base_dir");
+	open(my $sra_list_file2, "<$base_dir" || die "Can't open file $base_dir");
 
 	# Iterate over each individual metadata file and print out in an order respective to that
 	# which was obtained while forming @uniform_metadata. Note that missing fields need to be
 	# accounted for in each row as well.
-	while (my $sra_dirs = <$sra_list_file>) { 
+	while (my $sra_dirs = <$sra_list_file2>) { 
 
+		chomp $sra_dirs;
 		my @curr_header; # split the header of the current metadata file
-		my @order_needed; # use this to identify which order the current file needs to print in
-		$firstLine = 0;
+		my @curr_vals;
+		my $firstLine = 0;
 
 		open(my $curr_md_file, "<$sra_dirs$single_metadata" || die "Can't open file $sra_dirs$single_metadata");
 
 		while (my $line = <$curr_md_file>) {
+			chomp $line;
 
 			if($firstLine == 0) {
-				@curr_headers = split(/\t/, $line); 
+
+				@curr_header = split(/\t/, $line); 
 				$firstLine = 1;
 
 			} else {
 
+				my $i = 0; # use to communicate current headers respective to current metadata
+
+				@curr_vals = split(/\t/, $line); 
+				my @vals_array; $vals_array[$idx] = ''; # declare size of array
+
+				foreach my $val (@curr_vals) {
+					$vals_array[$md_order{$curr_header[$i]}] = $val;
+					$i++;
+				}
+
+				# Only need to find indices for those present, the rest of the values will be
+				# assigned an empty string, not undef, to load properly into MongoDB properly. 
+				print $outfile join("\t", map { defined $_ ? $_ : '' } @vals_array ) . "\n";
 			}
 		}
+
 		close $curr_md_file;
 	}
 
-	close $out;
-	close $sra_list_file;
+	close $outfile;
+	close $sra_list_file2;
 
 	# Use merge_blast_or_bam_lists.pl to merge the BLAST files
 	#`./merge_blast_or_bam_lists.pl $blast_list blast $final_blast`
