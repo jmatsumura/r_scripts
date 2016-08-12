@@ -79,7 +79,6 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 			@sra_headers = split(/\,/, $line); # banking on SRA using commas for separation only 
 			push @sra_headers, 'curation_note'; # account for TB curation note here
 			$firstLine = 1;
-			push @individual_metadata, \@sra_headers;
 	
 		} else {
 			@sra_values = split(/\,/, $line); 
@@ -125,10 +124,21 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 		if($firstLine == 0) {
 
 			my $curr_metadata = join("\t", @sra_headers);
-			# Append curation_note field here for TB so that the pie charts can be
-			# subsetted by an actual value and not 'Other' by default which does
-			# not work as a filter.
 			print $out "$line\t$curr_metadata\n"; 
+
+			# Account for any, and possibly different (unlikely), LGTSeek outputs
+			my @lgtseek_out_md = split(/\t/, $line);
+			foreach my $md (@lgtseek_out_md) {
+				unshift(@sra_headers, $md);
+
+				if($md ~~ @overall_metadata) {
+					next;
+				} else {
+					push @overall_metadata, $md;
+				}
+			}
+
+			push @individual_metadata, \@sra_headers;
 
 			$firstLine = 1;
 
@@ -144,7 +154,7 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 
 	# Process the BLAST results so that TwinBLAST only houses those that match. This will be done by
 	# refine_blast_data.pl
-	#`./refine_blast_data.pl $blast_in $lgt_in $sra_dirs$single_blast`;
+	`./refine_blast_data.pl $blast_in $lgt_in $sra_dirs$single_blast`;
 
 	print $blast_list_file "$sra_dirs$single_blast\n"; # file for merging
 }
@@ -192,9 +202,7 @@ if($uniq_sra > 1) {
 
 	open(my $sra_list_file2, "<$base_dir" || die "Can't open file $base_dir");
 
-	# Iterate over each individual metadata file and print out in an order respective to that
-	# which was obtained while forming @uniform_metadata. Note that missing fields need to be
-	# accounted for in each row as well.
+	# Iterate over each individual metadata file and reformat them to the uniform metadata header
 	while (my $sra_dirs = <$sra_list_file2>) { 
 
 		chomp $sra_dirs;
@@ -237,8 +245,5 @@ if($uniq_sra > 1) {
 	close $sra_list_file2;
 
 	# Use merge_blast_or_bam_lists.pl to merge the BLAST files
-	#`./merge_blast_or_bam_lists.pl $blast_list blast $final_blast`
+	`./merge_blast_or_bam_lists.pl $blast_list blast $final_blast`
 }
-
-# As a final step, append certain syntax like 'list' to the relative metadata fields
-# to accommodate the loading script for MongoDB. 
