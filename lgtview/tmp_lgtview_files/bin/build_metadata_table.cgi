@@ -83,6 +83,7 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 	
 		} else {
 			@sra_values = split(/\,/, $line); 
+			push @sra_values, 'NA'; 
 		}
 	}
 
@@ -127,14 +128,14 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 			# Append curation_note field here for TB so that the pie charts can be
 			# subsetted by an actual value and not 'Other' by default which does
 			# not work as a filter.
-			print $out "$line\t$curr_metadata\tcuration_note\n"; 
+			print $out "$line\t$curr_metadata\n"; 
 
 			$firstLine = 1;
 
 		} else {
 
 			my $curr_values = join("\t", @sra_values);
-			print $out "$line\t$curr_values\tNA\n";
+			print $out "$line\t$curr_values\n";
 		}
 	}
 
