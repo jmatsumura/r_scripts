@@ -32,7 +32,7 @@ Ext.onReady(function(){
             },
             reader: {
                 type: 'json',
-                root: 'metadata_table'
+                root: 'root'
             }
         },
         autoLoad: false
@@ -65,7 +65,11 @@ Ext.onReady(function(){
                 'checkchange': function(col, idx, isChecked) {
                     var rec = grid.store.getAt(idx);
                     rec.set("pie", false);
-                    rec.set("operator", 'matches');
+                    if(rec.get("filter") === false) {
+                        rec.set("operator", 'NA');
+                    } else {
+                        rec.set("operator", 'matches');
+                    }
                 }
             }
             },
@@ -169,6 +173,7 @@ Ext.onReady(function(){
                 timeout: 600000, 
                 params: conf
             });
+            table.load();
         }
     }
 });

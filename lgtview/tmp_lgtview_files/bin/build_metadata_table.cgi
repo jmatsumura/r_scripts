@@ -33,8 +33,7 @@ use strict;
 use warnings;
 use CGI;
 use JSON;
-
-my $cgi = CGI->new;
+use URI::Escape;
 
 # Output files that will be expected 
 my $single_metadata = "/single_metadata.out"; # just one run output
@@ -44,7 +43,8 @@ my $final_blast = "./final_blast.out";
 
 # Need to process multiple outputs of LGTSeek as LGTView is truly useful when comparing
 # numerous different sets of metadata against one another. 
-my $base_dir = $cgi->param('file');
+my $cgi = CGI->new;
+my $base_dir = uri_unescape($cgi->param('file'));
 my $metadata_file = "/sra_metadata.csv";
 my $lgt_hits_file = "/lgt_by_clone.txt";
 my $blast_results_file = "/blastn.out";
@@ -163,11 +163,11 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 
 # Send the relevant JSON info for the filter/graph table in generateLGTView.js
 print "Content-type: text/plain\n\n";
-print "{metadata_table: [\n";
+print "{root: [\n";
 foreach my $x (@overall_metadata) {
 	print to_json({'name' => $x,
-			'filter' => false,
-			'pie' => false,
+			'filter' => \0,
+			'pie' => \0,
 			'id' => $x,
 			'operator' => 'NA',
 	}).",\n";
