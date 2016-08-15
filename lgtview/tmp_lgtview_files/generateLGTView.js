@@ -19,10 +19,27 @@ Ext.require('Ext.ux.CheckColumn');
 Ext.onReady(function(){
 
     // Path to script to populate the form with relevant info
-    var EXTRACT_METADATA_URL = '/cgi-bin/extractLoadingData.cgi'; 
+    var EXTRACT_METADATA_URL = '/cgi-bin/build_metadata_table.cgi'; 
+
+    var table = Ext.create('Ext.data.Store', {
+        storeId:'table',
+        fields: ['name', 'filter', 'pie', 'id', 'operator'],
+        proxy: {
+            type: 'ajax',
+            url: EXTRACT_METADATA_URL,
+            actionMethods: {
+                read: 'POST'
+            },
+            reader: {
+                type: 'json',
+                root: 'metadata_table'
+            }
+        },
+        autoLoad: false
+    });
 
     var grid = Ext.create('Ext.grid.Panel', {
-        store: ds,
+        store: table,
         selType: 'cellmodel',
         columns: [
             {
@@ -92,17 +109,21 @@ Ext.onReady(function(){
         text: 'Extract Metadata',
         bodyPadding: 20,
         width: 100,
-        style: { marginLeft: '15px' }
+        style: { marginLeft: '15px' },
+        handler: function() {
+            loadMetadata();
+        }
     });
 
     var form = Ext.create('Ext.form.field.Text', ({
+        id: 'sra_list',
         bodyPadding: 10,
         width: 370,
         labelWidth: 160,
-        fieldLabel: 'Sequence Read Archive ID',
+        fieldLabel: 'Sequence Read Archive IDs',
     }));
     
-    var toppanel =  Ext.create('Ext.panel.Panel', ({
+    var toppanel =  Ext.create('Ext.form.Panel', ({
         frame: true,
         region: 'north',
         title: 'LGTView Generator',
@@ -123,7 +144,7 @@ Ext.onReady(function(){
         },
         items: [{
             xtype: 'button',
-            text: 'Load LGTView'
+            text: 'Load LGTView',
         }]
     }));
 
@@ -133,6 +154,21 @@ Ext.onReady(function(){
         defaults: {split: true},
         items: [toppanel,middlepanel,lastpanel]
     });
-    
+
     vp.doLayout();
+
+    function loadMetadata(){
+        var val = Ext.ComponentQuery.query('#sra_list')[0].getValue();
+        var conf = {
+            'file': val
+        }
+        if(val){
+            Ext.Ajax.request({
+                url: EXTRACT_METADATA_URL,
+                // This could take some time if there are numerous LGTSeek outputs
+                timeout: 600000, 
+                params: conf
+            });
+        }
+    }
 });

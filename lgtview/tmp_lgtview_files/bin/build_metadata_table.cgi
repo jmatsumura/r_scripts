@@ -31,8 +31,10 @@ e-mail: jmatsumura@som.umaryland.edu
 
 use strict;
 use warnings;
-#use CGI;
-#use JSON;
+use CGI;
+use JSON;
+
+my $cgi = CGI->new;
 
 # Output files that will be expected 
 my $single_metadata = "/single_metadata.out"; # just one run output
@@ -42,7 +44,7 @@ my $final_blast = "./final_blast.out";
 
 # Need to process multiple outputs of LGTSeek as LGTView is truly useful when comparing
 # numerous different sets of metadata against one another. 
-my $base_dir = "./sra_list2.txt";
+my $base_dir = $cgi->param('file');
 my $metadata_file = "/sra_metadata.csv";
 my $lgt_hits_file = "/lgt_by_clone.txt";
 my $blast_results_file = "/blastn.out";
@@ -154,13 +156,23 @@ while (my $sra_dirs = <$sra_list_file>) { # process each SRA LGTSeek output resu
 
 	# Process the BLAST results so that TwinBLAST only houses those that match. This will be done by
 	# refine_blast_data.pl
-	`./refine_blast_data.pl $blast_in $lgt_in $sra_dirs$single_blast`;
+	#`./refine_blast_data.pl $blast_in $lgt_in $sra_dirs$single_blast`;
 
 	print $blast_list_file "$sra_dirs$single_blast\n"; # file for merging
 }
 
 # Send the relevant JSON info for the filter/graph table in generateLGTView.js
-#@overall_metadata;
+print "Content-type: text/plain\n\n";
+print "{metadata_table: [\n";
+foreach my $x (@overall_metadata) {
+	print to_json({'name' => $x,
+			'filter' => false,
+			'pie' => false,
+			'id' => $x,
+			'operator' => 'NA',
+	}).",\n";
+}
+print "]}";
 
 close $sra_list_file;
 close $blast_list_file;
@@ -245,5 +257,5 @@ if($uniq_sra > 1) {
 	close $sra_list_file2;
 
 	# Use merge_blast_or_bam_lists.pl to merge the BLAST files
-	`./merge_blast_or_bam_lists.pl $blast_list blast $final_blast`
+	#`./merge_blast_or_bam_lists.pl $blast_list blast $final_blast`
 }
