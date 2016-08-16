@@ -11,6 +11,8 @@ Ext.onReady(function(){
 
     // Path to script to populate the form with relevant info
     var EXTRACT_METADATA_URL = '/cgi-bin/build_metadata_table.cgi'; 
+    // Path to script to populate the form with relevant info
+    var INIT_LGTVIEW_URL = '/cgi-bin/build_custom_LGTView.cgi'; 
 
     var table = Ext.create('Ext.data.Store', {
         storeId:'table',
@@ -104,6 +106,7 @@ Ext.onReady(function(){
 
     var submitSRA = Ext.create('Ext.Button', {
         text: 'Extract Metadata',
+        id: 'submit_button',
         bodyPadding: 20,
         width: 100,
         style: { marginLeft: '15px' },
@@ -112,12 +115,23 @@ Ext.onReady(function(){
         }
     });
 
+    var loadLGTView = Ext.create('Ext.Button', {
+        text: 'Load LGTView',
+        id: 'load_button',
+        bodyPadding: 20,
+        width: 100,
+        style: { marginLeft: '15px' },
+        handler: function() {
+            initLGTView();
+        }
+    });
+
     var form = Ext.create('Ext.form.field.Text', ({
         id: 'sra_list',
         bodyPadding: 10,
-        width: 370,
-        labelWidth: 160,
-        fieldLabel: 'Sequence Read Archive IDs',
+        width: 570,
+        labelWidth: 230,
+        fieldLabel: 'List File of Sequence Read Archive IDs',
     }));
     
     var toppanel =  Ext.create('Ext.form.Panel', ({
@@ -139,10 +153,7 @@ Ext.onReady(function(){
             type: 'hbox',
             pack: 'center'
         },
-        items: [{
-            xtype: 'button',
-            text: 'Load LGTView',
-        }]
+        items: [loadLGTView]
     }));
 
     var vp = new Ext.Viewport({
@@ -154,14 +165,41 @@ Ext.onReady(function(){
 
     vp.doLayout();
 
+    var metadata_loaded = '';
+
     function loadMetadata(){
         var val = Ext.ComponentQuery.query('#sra_list')[0].getValue();
         var conf = {
             'file': val
         }
         if(val){
+            Ext.getCmp('submit_button').disable();
             table.proxy.extraParams = conf;
             table.load();
+            metadata_loaded = 'yes';
+            Ext.getCmp('submit_button').enable();
+        }
+    }
+
+    function initLGTView(){
+
+        if(metadata_loaded == 'yes'){
+
+            Ext.Ajax.request({
+                url: INIT_LGTVIEW_URL,
+                timeout: 600000,
+                success: function(response) { 
+                    var res = Ext.JSON.decode(response.responseText,true);
+                    if(res) {
+                        vp.setLoading('Loading LGTView. Please navigate to localhost:8080 to view your new instance of LGTView once this message disappears.');
+                    } else {
+                        vp.setLoading(false);
+                    }
+                }
+            });
+
+        } else {
+            alert('Please configure metadata before loading');
         }
     }
 });
