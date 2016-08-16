@@ -45,13 +45,13 @@ my $cgi = CGI->new;
 my $dd = qq#
 {
 	"root" : [
-		{	"name": "run",
+		{	"name": "run_run_run",
 			"filter": false,
-			"pie": false,
+			"pie": true,
 			"id": "run",
 			"operator": "NA"
 		},
-		{	"name": "test",
+		{	"name": "TestNow",
 			"filter": false,
 			"pie": true,
 			"id": "test",
@@ -62,6 +62,12 @@ my $dd = qq#
 			"pie": false,
 			"id": "123",
 			"operator": ">"
+		},
+		{	"name": "123",
+			"filter": true,
+			"pie": false,
+			"id": "123",
+			"operator": "matches"
 		}
 	]
 }
@@ -74,7 +80,9 @@ my $filter_line = ''; # line 2
 
 my @md = @{ $data->{'root'} }; # deref and copy to new array
 
-open(my $outfile, ">./config_file.tsv" || die "Can't open file ./config_file.tsv");
+my $file = '/export/lgt/files/md_config_file.tsv';
+
+open(my $outfile, ">$file" || die "Can't open file $file");
 
 foreach my $m ( @md ) { # iterate over array of hashref
 
@@ -93,11 +101,22 @@ foreach my $m ( @md ) { # iterate over array of hashref
 			$pchart_line .= "\t";
 		}
 
-		# Could get fancy here eventually and use regex to try reformat each 
-		# metadata name to something more proper. e.g....
+		$pchart_line .= "$name|";
+
+		# Try format the metadata fields into a more readable name for the pie
+		# chart titles. Note this could require more error checking. Don't want 
+		# to do this with the filters so that it's clear which column in the 
+		# table is being filtered agianst in the left panel. For example...
 		# spots_with_mates --> Spots With Mates
 		# LibrarySource --> Library Source
-		$pchart_line .= "$name|$name";
+
+		if($name =~ m/\_/){
+			$name =~ s/\_/ /g;
+		} else {
+			$name =~ s/(\B[A-Z])/ $1/g;
+		}
+
+		$pchart_line .= "$name";
 
 	} elsif($filter == 1) { # append to line 2 to configure filters
 
@@ -119,6 +138,11 @@ foreach my $m ( @md ) { # iterate over array of hashref
 	}
 }
 
+print $outfile "$pchart_line\n$filter_line";
 close $outfile;
 
-print "$pchart_line\n$filter_line";
+# Modify the JS
+#`./configure_lgtview_for_metadata.pl /export/lgt/files/md_config_file.tsv /var/www/html/lgtview.js`;
+
+# Load MongoDB
+#`./lgt_load_mongo.pl --metadata=/export/lgt/files/final_metadata.out --db=lgtview_example --host=172.18.0.1:27017`;
