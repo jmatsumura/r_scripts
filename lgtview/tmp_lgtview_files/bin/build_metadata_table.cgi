@@ -38,8 +38,8 @@ use URI::Escape;
 # Output files that will be expected 
 my $single_metadata = "/single_metadata.out"; # just one run output
 my $single_blast = "/single_blast.out";
-my $final_metadata = "./final_metadata.out"; # combined run outputs
-my $final_blast = "./final_blast.out";
+my $final_metadata = "/export/lgt/files/final_metadata.out"; # combined run outputs
+my $final_blast = "/export/lgt/files/final_blast.out";
 
 # Need to process multiple outputs of LGTSeek as LGTView is truly useful when comparing
 # numerous different sets of metadata against one another. 
@@ -48,7 +48,7 @@ my $base_dir = uri_unescape($cgi->param('file'));
 my $metadata_file = "/sra_metadata.csv";
 my $lgt_hits_file = "/lgt_by_clone.txt";
 my $blast_results_file = "/blastn.out";
-my $blast_list = "./blast_list.txt";
+my $blast_list = "/export/lgt/files/blast_list.txt";
 my $uniq_sra = 0; # check to see if multiple SRA results are present
 my @overall_metadata; # compile a list of metadata fields that have values tied to them
 my @individual_metadata; # array of arrays for each set of headers present

@@ -1,12 +1,3 @@
-var ds = Ext.create('Ext.data.Store', {
-    fields: ['name', 'filter', 'pie', 'id', 'operator'],
-    data: [
-    {"name": "euk_genus1", "filter": false, "pie": false, "id": "euk_genus1", "operator" : 'NA'},
-    {"name": "euk_genus2", "filter": false, "pie": false, "id": "euk_genus2", "operator" : 'NA'},
-    {"name": "euk_genus3", "filter": false, "pie": false, "id": "euk_genus3", "operator" : 'NA'}
-    ]
-});
-
 Ext.Loader.setConfig({
     enabled: true,
     paths: {
@@ -27,6 +18,7 @@ Ext.onReady(function(){
         proxy: {
             type: 'ajax',
             url: EXTRACT_METADATA_URL,
+            noCache: false,
             actionMethods: {
                 read: 'POST'
             },
@@ -41,6 +33,7 @@ Ext.onReady(function(){
     var grid = Ext.create('Ext.grid.Panel', {
         store: table,
         selType: 'cellmodel',
+        forcefit: true,
         columns: [
             {
             xtype: 'checkcolumn',
@@ -105,7 +98,7 @@ Ext.onReady(function(){
 
     var middlepanel = Ext.create('Ext.panel.Panel', ({
         region: 'center',
-        flex: 1,
+        layout: 'fit',
         items: [grid]
     }));
 
@@ -155,7 +148,7 @@ Ext.onReady(function(){
     var vp = new Ext.Viewport({
         layout: 'border',
         autoScroll: true,
-        defaults: {split: true},
+        //defaults: {split: true},
         items: [toppanel,middlepanel,lastpanel]
     });
 
@@ -167,12 +160,7 @@ Ext.onReady(function(){
             'file': val
         }
         if(val){
-            Ext.Ajax.request({
-                url: EXTRACT_METADATA_URL,
-                // This could take some time if there are numerous LGTSeek outputs
-                timeout: 600000, 
-                params: conf
-            });
+            table.proxy.extraParams = conf;
             table.load();
         }
     }
