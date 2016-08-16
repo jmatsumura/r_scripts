@@ -41,3 +41,84 @@ use CGI;
 use JSON;
 
 my $cgi = CGI->new;
+
+my $dd = qq#
+{
+	"root" : [
+		{	"name": "run",
+			"filter": false,
+			"pie": false,
+			"id": "run",
+			"operator": "NA"
+		},
+		{	"name": "test",
+			"filter": false,
+			"pie": true,
+			"id": "test",
+			"operator": "NA"
+		},
+		{	"name": "123",
+			"filter": true,
+			"pie": false,
+			"id": "123",
+			"operator": ">"
+		}
+	]
+}
+#;
+
+my $data = from_json( $dd );
+
+my $pchart_line = ''; # line 1 needed for configure_lgtview_for_metadata.pl
+my $filter_line = ''; # line 2
+
+my @md = @{ $data->{'root'} }; # deref and copy to new array
+
+open(my $outfile, ">./config_file.tsv" || die "Can't open file ./config_file.tsv");
+
+foreach my $m ( @md ) { # iterate over array of hashref
+
+	my $name = $m->{'name'};
+	my $filter = $m->{'filter'};
+	my $pie = $m->{'pie'};
+	#my $id = $m->{'id'}; ID not needed for this step, only for JS
+	my $operator = $m->{'operator'};
+
+	if($filter == 0 && $pie == 0){ # this data only needs to be loaded to MongoDB
+		next;
+
+	} elsif($pie == 1) { # append to line 1 to configure pie charts
+
+		if($pchart_line ne '') { # separate if value already present
+			$pchart_line .= "\t";
+		}
+
+		# Could get fancy here eventually and use regex to try reformat each 
+		# metadata name to something more proper. e.g....
+		# spots_with_mates --> Spots With Mates
+		# LibrarySource --> Library Source
+		$pchart_line .= "$name|$name";
+
+	} elsif($filter == 1) { # append to line 2 to configure filters
+
+		if($filter_line ne '') {
+			$filter_line .= "\t";
+		}
+
+		$filter_line .= "$name|";
+
+		if($operator eq 'matches'){
+			$filter_line .= "l";
+
+		} elsif($operator eq '<') {
+			$filter_line .= "n|<";
+
+		} elsif($operator eq '>') {
+			$filter_line .= "n|>";
+		}
+	}
+}
+
+close $outfile;
+
+print "$pchart_line\n$filter_line";
