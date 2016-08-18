@@ -183,11 +183,22 @@ Ext.onReady(function(){
 
     function initLGTView(){
 
+	var data = new Array();
+	var records = table.getRange();
+	for (var i = 0; i < records.length; i++) {
+		data.push(records[i].data);
+	}
+
+        var conf = {
+            dat: Ext.JSON.encode(data),
+        }
+
         if(metadata_loaded == 'yes'){
 
             Ext.Ajax.request({
                 url: INIT_LGTVIEW_URL,
                 timeout: 600000,
+		params: conf,
                 success: function(response) { 
                     var res = Ext.JSON.decode(response.responseText,true);
                     if(res) {

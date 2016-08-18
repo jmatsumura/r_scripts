@@ -41,7 +41,7 @@ use CGI;
 use JSON;
 
 my $cgi = CGI->new;
-my $jd = $cgi->param('data')
+my $jd = $cgi->param('dat');
 
 my $data = from_json( $jd );
 
