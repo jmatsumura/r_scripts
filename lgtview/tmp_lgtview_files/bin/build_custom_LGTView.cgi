@@ -41,39 +41,9 @@ use CGI;
 use JSON;
 
 my $cgi = CGI->new;
+my $jd = $cgi->param('data')
 
-my $dd = qq#
-{
-	"root" : [
-		{	"name": "run_run_run",
-			"filter": false,
-			"pie": true,
-			"id": "run",
-			"operator": "NA"
-		},
-		{	"name": "TestNow",
-			"filter": false,
-			"pie": true,
-			"id": "test",
-			"operator": "NA"
-		},
-		{	"name": "123",
-			"filter": true,
-			"pie": false,
-			"id": "123",
-			"operator": ">"
-		},
-		{	"name": "123",
-			"filter": true,
-			"pie": false,
-			"id": "123",
-			"operator": "matches"
-		}
-	]
-}
-#;
-
-my $data = from_json( $dd );
+my $data = from_json( $jd );
 
 my $pchart_line = ''; # line 1 needed for configure_lgtview_for_metadata.pl
 my $filter_line = ''; # line 2
