@@ -37,6 +37,7 @@ Ext.onReady(function(){
         selType: 'cellmodel',
         forcefit: true,
         columns: [
+            {text: "Metadata", width: 150, dataIndex: 'name', flex: 1},
             {
             xtype: 'checkcolumn',
             text: 'Pie Graph',
@@ -68,7 +69,6 @@ Ext.onReady(function(){
                 }
             }
             },
-            {text: "Metadata", width: 150, dataIndex: 'name', flex: 1},
             {
             text: "Comparison Operator", 
             width: 150, 

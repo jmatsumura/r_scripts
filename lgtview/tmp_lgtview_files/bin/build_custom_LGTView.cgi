@@ -39,22 +39,29 @@ use strict;
 use warnings;
 use CGI;
 use JSON;
+use Data::Dumper;
 
 my $cgi = CGI->new;
 my $jd = $cgi->param('dat');
 
-my $data = from_json( $jd );
+# This data structure is a bit wonkier than expected. It is essentially a "2D"
+# array (array with array refs as elements) and each of those arrays contain
+# the hash of columns for each individual metadata. Thus, access like so:
+# $md[0][0]->{'name'}, $md[0][1]->{'operator'}, etc.
+my @md = from_json( $jd );
 
 my $pchart_line = ''; # line 1 needed for configure_lgtview_for_metadata.pl
 my $filter_line = ''; # line 2
-
-my @md = @{ $data->{'root'} }; # deref and copy to new array
 
 my $file = '/export/lgt/files/md_config_file.tsv';
 
 open(my $outfile, ">$file" || die "Can't open file $file");
 
-foreach my $m ( @md ) { # iterate over array of hashref
+print "Content-type: text/plain\n\n";
+
+foreach my $m ( @{$md[0]} ) { # iterate over array of hashref
+
+	print to_json({success=>1});
 
 	my $name = $m->{'name'};
 	my $filter = $m->{'filter'};
@@ -112,7 +119,7 @@ print $outfile "$pchart_line\n$filter_line";
 close $outfile;
 
 # Modify the JS
-#`./configure_lgtview_for_metadata.pl /export/lgt/files/md_config_file.tsv /var/www/html/lgtview.js`;
+`./configure_lgtview_for_metadata.pl /export/lgt/files/md_config_file.tsv /var/www/html/lgtview.js`;
 
 # Load MongoDB
-#`./lgt_load_mongo.pl --metadata=/export/lgt/files/final_metadata.out --db=lgtview_example --host=172.18.0.1:27017`;
+`./lgt_load_mongo.pl --metadata=/export/lgt/files/final_metadata.out --db=lgtview_example --host=172.18.0.1:27017`;
